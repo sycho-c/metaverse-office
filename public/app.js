@@ -139,13 +139,46 @@ function connect() {
   const es = new EventSource('/events');
   es.onopen = () => { connEl.textContent = '● 실시간'; connEl.className = 'on'; };
   es.onmessage = (e) => {
-    try { update(JSON.parse(e.data).sessions || []); } catch (err) { /* skip */ }
+    try {
+      const msg = JSON.parse(e.data);
+      update(msg.sessions || []);
+      renderUsage(msg.usage);
+    } catch (err) { /* skip */ }
   };
   es.onerror = () => {
     connEl.textContent = '● 재연결 중…'; connEl.className = 'off';
     es.close();
     setTimeout(connect, 3000);
   };
+}
+
+// ---------- 토큰 사용량 위젯 (statusline 덤프 → 토큰 0) ----------
+function resetLabel(epochSec) {
+  if (!epochSec) return '';
+  const ms = epochSec * 1000 - Date.now();
+  if (ms <= 0) return '곧 재설정';
+  const h = Math.floor(ms / 3600e3), m = Math.floor((ms % 3600e3) / 60e3);
+  const when = new Date(epochSec * 1000).toLocaleString('ko-KR',
+    { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+  return h >= 1 ? `${h}시간 ${m}분 후 재설정 · ${when}` : `${m}분 후 재설정 · ${when}`;
+}
+function usageColor(p) { return p >= 85 ? '#ff5252' : p >= 60 ? '#ffb020' : '#43d675'; }
+function renderUsage(u) {
+  const box = document.getElementById('usage');
+  if (!u || (u.fiveHourPct == null && u.weeklyPct == null)) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  const set = (pctId, fillId, resetId, pct, reset) => {
+    const p = pct == null ? null : Math.round(pct);
+    document.getElementById(pctId).textContent = p == null ? '–' : p + '%';
+    const f = document.getElementById(fillId);
+    f.style.width = (p == null ? 0 : Math.min(100, p)) + '%';
+    f.style.background = usageColor(p || 0);
+    document.getElementById(resetId).textContent = resetLabel(reset);
+  };
+  set('u5pct', 'u5fill', 'u5reset', u.fiveHourPct, u.fiveHourResetsAt);
+  set('uwpct', 'uwfill', 'uwreset', u.weeklyPct, u.weeklyResetsAt);
+  const cost = document.getElementById('ucost');
+  cost.textContent = (u.costUSD != null) ? `세션 비용 $${Number(u.costUSD).toFixed(2)}` : '';
 }
 
 function update(next) {

@@ -139,8 +139,26 @@ function readJobs() {
 const clients = new Set();
 let lastPayload = '';
 
+// statusline 이 덤프한 5시간/주간 rate limit (토큰 0, 읽기 전용)
+function readUsage() {
+  try {
+    const u = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.claude', 'office-usage.json'), 'utf8'));
+    const rl = u.rate_limits || {};
+    return {
+      fiveHourPct: rl.five_hour ? rl.five_hour.used_percentage : null,
+      fiveHourResetsAt: rl.five_hour ? rl.five_hour.resets_at : null,
+      weeklyPct: rl.seven_day ? rl.seven_day.used_percentage : null,
+      weeklyResetsAt: rl.seven_day ? rl.seven_day.resets_at : null,
+      costUSD: u.cost ? u.cost.total_cost_usd : null,
+      ts: u.ts ? Math.round(u.ts * 1000) : null,
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
 function snapshot() {
-  return JSON.stringify({ ts: Date.now(), stallMin: STALL_MIN, sessions: readJobs() });
+  return JSON.stringify({ ts: Date.now(), stallMin: STALL_MIN, usage: readUsage(), sessions: readJobs() });
 }
 
 function broadcastIfChanged() {
