@@ -78,7 +78,7 @@ const walkers = new Map();         // sessionId → 보행 상태
 let lastT = 0, dtFrame = 16;       // 프레임 간격(ms)
 let maxWalkers = 2;                // 동시 보행 인원 상한
 const ROAM_TOP = TOP_WALL + ZONE_H + 2;   // 코어 보행 영역 상단(복도)
-const WALK_SPEED = 0.032;          // 논리px/ms
+const WALK_SPEED = 0.05;           // 논리px/ms
 let rooms = [];                    // 휴게실/탕비실 기하 {type,x,y,w,h,doorCx}
 let seatMap = [];                  // pod별 좌석 배정 [pods][4] (세션 or undefined)
 const speeches = new Map();        // sessionId → { text, until }
@@ -1132,21 +1132,22 @@ function roomAt(x, y) {
   for (const r of rooms) if (x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h) return r;
   return null;
 }
+// 도착지는 방 중앙(가구 앞)으로 깊게 — 문턱에 머물지 않고 안으로 들어가도록
 function roomPOIs(r) {
   if (r.type === 'break') return [
-    { x: r.x + r.w / 2, y: r.y + r.h - 14 },
-    { x: r.x + 18, y: r.y + r.h - 12 },
-    { x: r.x + r.w - 18, y: r.y + r.h - 12 },
+    { x: r.x + r.w / 2, y: r.y + 50 },          // 중앙(테이블 앞)
+    { x: r.x + 26, y: r.y + 60 },               // 좌측(소파/암체어 앞)
+    { x: r.x + r.w - 28, y: r.y + 56 },         // 우측
   ];
   return [
-    { x: r.x + r.w / 2, y: r.y + r.h - 12 },
-    { x: r.x + r.w - 14, y: r.y + r.h - 18 },
-    { x: r.x + 14, y: r.y + r.h - 12 },
+    { x: r.x + r.w / 2 - 10, y: r.y + 60 },     // 중앙
+    { x: r.x + r.w / 2 + 12, y: r.y + 62 },     // 원형테이블 앞
+    { x: r.x + r.w - 18, y: r.y + 58 },         // 우측(정수기 쪽)
   ];
 }
 
 // 격자 BFS 경로탐색 (장애물 우회 + 문 통과)
-const GC = 7;                       // 격자 셀 크기(논리px)
+const GC = 5;                       // 격자 셀 크기(논리px) — 작을수록 가구 사이 통로 정밀
 let grid = null, gridCols = 0, gridRows = 0, gridKey = '';
 function buildGrid() {
   const key = `${floorW}x${floorH}x${obstacles.length}`;
@@ -1192,12 +1193,16 @@ function pathFind(sx, sy, gx, gy) {
   const cells = []; let cur = goal;
   while (cur !== prev[cur]) { cells.push(cur); cur = prev[cur]; }
   cells.reverse();
+  // 방향 전환점만 유지 → 각 구간이 축정렬 직선(대각선 점프·모서리 끼임 방지)
+  const cc = (i) => cells[i] % gridCols, cr = (i) => (cells[i] / gridCols) | 0;
   const pts = [];
-  for (let i = 0; i < cells.length; i++)
-    if (i % 2 === 0 || i === cells.length - 1) {
-      const c = cells[i] % gridCols, r = (cells[i] / gridCols) | 0;
-      pts.push({ x: c * GC + GC / 2, y: r * GC + GC / 2 });
+  for (let i = 0; i < cells.length; i++) {
+    if (i === 0 || i === cells.length - 1 ||
+        (cc(i) - cc(i - 1)) !== (cc(i + 1) - cc(i)) ||
+        (cr(i) - cr(i - 1)) !== (cr(i + 1) - cr(i))) {
+      pts.push({ x: cc(i) * GC + GC / 2, y: cr(i) * GC + GC / 2 });
     }
+  }
   pts.push({ x: gx, y: gy });                   // 최종 정확 위치
   return pts;
 }
@@ -1246,7 +1251,12 @@ function moveTo(w, tx, ty, dt) {
 function moveAlong(w, dt) {
   if (!w.path || !w.path.length) return true;
   const p = w.path[0];
-  if (moveTo(w, p.x, p.y, dt) || w.stuck > 2200) {
+  if (moveTo(w, p.x, p.y, dt)) { w.path.shift(); w.stuck = 0; return !w.path.length; }
+  if (w.stuck > 700 && w.stuck < 3000) {        // 살짝 막힘 → 옆으로 비켜 우회
+    const s = Math.random() < 0.5 ? 5 : -5;
+    if (!blocked(w.x + s, w.y)) w.x += s;
+    else if (!blocked(w.x, w.y + s)) w.y += s;
+  } else if (w.stuck > 3000) {                  // 오래 막힘 → 경유점 건너뜀(안전장치)
     w.path.shift(); w.stuck = 0;
     if (!w.path.length) return true;
   }
@@ -1263,7 +1273,7 @@ function tickWalker(w, eff, dt) {
     if (w.timer <= 0) {
       let started = false;
       if (eligible && activeWalkerCount() < maxWalkers && Math.random() < 0.6) {
-        if (rooms.length && Math.random() < 0.5) {     // 휴게실/탕비실 방문
+        if (rooms.length && Math.random() < 0.55) {    // 휴게실/탕비실 방문
           const r = rooms[Math.floor(Math.random() * rooms.length)];
           const pois = roomPOIs(r).filter((p) => !blocked(p.x, p.y));
           if (pois.length) {
