@@ -75,13 +75,15 @@
     padding: 12px;
   }
   aside h2 { font-size: 12px; color: var(--dim); margin: 4px 4px 10px; font-weight: 600; letter-spacing: 1px; }
-  #usage .ubar { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; margin: 0 0 8px; }
-  #usage .urow { display: flex; justify-content: space-between; align-items: baseline; }
-  #usage .ulabel { font-size: 11px; color: var(--dim); }
-  #usage .upct { font-size: 13px; font-weight: 700; color: var(--text); }
-  #usage .utrack { height: 7px; border-radius: 5px; background: #2b2f38; overflow: hidden; margin: 6px 0 5px; }
-  #usage .ufill { height: 100%; border-radius: 5px; width: 0; transition: width .4s ease; background: #43d675; }
-  #usage .ureset { font-size: 10px; color: #6b7280; }
+  /* 헤더 사용량 미니바 */
+  .hu { display: flex; align-items: center; gap: 14px; margin-right: 6px; }
+  .hu-item { display: flex; align-items: center; gap: 6px; cursor: default; }
+  .hu-lbl { font-size: 11px; color: var(--dim); }
+  .hu-track { width: 60px; height: 6px; border-radius: 4px; background: #2b2f38; overflow: hidden; }
+  .hu-fill { display: block; height: 100%; width: 0; border-radius: 4px; background: #43d675; transition: width .4s ease; }
+  .hu-pct { font-size: 12px; font-weight: 700; color: var(--text); min-width: 30px; text-align: right; }
+  .hu-cost { font-size: 11px; color: var(--dim); }
+  .hu-reset { display: none; }
   .item {
     background: var(--panel2);
     border: 1px solid var(--line);
@@ -129,18 +131,18 @@
       <span class="chip"><span class="dot done"></span>완료 <b id="c-done">0</b></span>
     </div>
     <div class="spacer"></div>
+    <div id="usage" class="hu" style="display:none">
+      <span class="hu-item" id="u5item"><span class="hu-lbl">5시간</span><span class="hu-track"><span class="hu-fill" id="u5fill"></span></span><span class="hu-pct" id="u5pct">–</span></span>
+      <span class="hu-item" id="uwitem"><span class="hu-lbl">주간</span><span class="hu-track"><span class="hu-fill" id="uwfill"></span></span><span class="hu-pct" id="uwpct">–</span></span>
+      <span class="hu-cost" id="ucost"></span>
+      <span class="hu-reset" id="u5reset" hidden></span><span class="hu-reset" id="uwreset" hidden></span>
+    </div>
     <label class="toggle"><input type="checkbox" id="hide-done" />완료 숨기기</label>
     <span id="conn">연결 중…</span>
   </header>
   <main>
     <div id="canvas-wrap"><canvas id="office" width="800" height="600"></canvas></div>
     <aside id="panel">
-      <div id="usage" style="display:none">
-        <h2>USAGE</h2>
-        <div class="ubar"><div class="urow"><span class="ulabel">현재 세션 · 5시간</span><span class="upct" id="u5pct">–</span></div><div class="utrack"><div class="ufill" id="u5fill"></div></div><div class="ureset" id="u5reset"></div></div>
-        <div class="ubar"><div class="urow"><span class="ulabel">주간 한도 (모든 모델)</span><span class="upct" id="uwpct">–</span></div><div class="utrack"><div class="ufill" id="uwfill"></div></div><div class="ureset" id="uwreset"></div></div>
-        <div class="ureset" id="ucost" style="margin-bottom:12px"></div>
-      </div>
       <h2>SESSIONS</h2>
       <ul id="list" style="list-style:none;margin:0;padding:0"></ul>
     </aside>

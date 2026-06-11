@@ -166,19 +166,20 @@ function usageColor(p) { return p >= 85 ? '#ff5252' : p >= 60 ? '#ffb020' : '#43
 function renderUsage(u) {
   const box = document.getElementById('usage');
   if (!u || (u.fiveHourPct == null && u.weeklyPct == null)) { box.style.display = 'none'; return; }
-  box.style.display = 'block';
-  const set = (pctId, fillId, resetId, pct, reset) => {
+  box.style.display = 'flex';
+  const set = (itemId, pctId, fillId, label, pct, reset) => {
     const p = pct == null ? null : Math.round(pct);
     document.getElementById(pctId).textContent = p == null ? '–' : p + '%';
     const f = document.getElementById(fillId);
     f.style.width = (p == null ? 0 : Math.min(100, p)) + '%';
     f.style.background = usageColor(p || 0);
-    document.getElementById(resetId).textContent = resetLabel(reset);
+    const r = resetLabel(reset);
+    document.getElementById(itemId).title = r ? `${label} ${p}% · ${r}` : `${label} ${p}%`;
   };
-  set('u5pct', 'u5fill', 'u5reset', u.fiveHourPct, u.fiveHourResetsAt);
-  set('uwpct', 'uwfill', 'uwreset', u.weeklyPct, u.weeklyResetsAt);
+  set('u5item', 'u5pct', 'u5fill', '현재 세션·5시간', u.fiveHourPct, u.fiveHourResetsAt);
+  set('uwitem', 'uwpct', 'uwfill', '주간(모든 모델)', u.weeklyPct, u.weeklyResetsAt);
   const cost = document.getElementById('ucost');
-  cost.textContent = (u.costUSD != null) ? `세션 비용 $${Number(u.costUSD).toFixed(2)}` : '';
+  cost.textContent = (u.costUSD != null) ? `$${Number(u.costUSD).toFixed(2)}` : '';
 }
 
 function update(next) {
