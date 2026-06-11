@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Claude Office — 세션 모니터</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏢</text></svg>" />
+<style>
+  :root {
+    --bg: #17181d;
+    --panel: #1f2128;
+    --panel2: #262932;
+    --line: #32363f;
+    --text: #e8eaf0;
+    --dim: #9aa0ad;
+    --working: #43d675;
+    --done: #4da3ff;
+    --blocked: #ffb020;
+    --stalled: #ff5252;
+    --unknown: #9aa0a6;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Apple SD Gothic Neo", "Pretendard", "Malgun Gothic", sans-serif;
+    display: flex; flex-direction: column;
+  }
+
+  header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 10px 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 10;
+  }
+  header h1 { font-size: 16px; margin: 0; letter-spacing: .5px; }
+  header h1 .sub { color: var(--dim); font-weight: 400; font-size: 12px; margin-left: 8px; }
+  .chips { display: flex; gap: 8px; margin-left: 8px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; padding: 3px 10px; border-radius: 20px;
+    background: var(--panel2); border: 1px solid var(--line); color: var(--dim);
+  }
+  .chip b { color: var(--text); font-size: 13px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot.working { background: var(--working); }
+  .dot.done { background: var(--done); }
+  .dot.blocked { background: var(--blocked); }
+  .dot.stalled { background: var(--stalled); }
+  .spacer { flex: 1; }
+  label.toggle { font-size: 12px; color: var(--dim); display: flex; gap: 6px; align-items: center; cursor: pointer; user-select: none; }
+  #conn { font-size: 11px; color: var(--dim); }
+  #conn.on { color: var(--working); }
+  #conn.off { color: var(--stalled); }
+
+  main { flex: 1; display: flex; min-height: 0; }
+  #canvas-wrap {
+    flex: 1; overflow: auto; padding: 14px;
+    display: flex; justify-content: center; align-items: flex-start;
+  }
+  canvas#office {
+    image-rendering: pixelated;
+    border-radius: 10px;
+    box-shadow: 0 8px 40px rgba(0,0,0,.45);
+    cursor: pointer;
+  }
+
+  aside#panel {
+    width: 330px; min-width: 330px;
+    background: var(--panel);
+    border-left: 1px solid var(--line);
+    overflow-y: auto;
+    padding: 12px;
+  }
+  aside h2 { font-size: 12px; color: var(--dim); margin: 4px 4px 10px; font-weight: 600; letter-spacing: 1px; }
+  .item {
+    background: var(--panel2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color .15s, transform .1s;
+  }
+  .item:hover { border-color: #4a4f5c; }
+  .item.hl { border-color: var(--blocked); }
+  .item .row1 { display: flex; align-items: center; gap: 8px; }
+  .item .name { font-size: 13px; font-weight: 700; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 700; flex-shrink: 0; }
+  .badge.working { background: rgba(67,214,117,.15); color: var(--working); }
+  .badge.done { background: rgba(77,163,255,.15); color: var(--done); }
+  .badge.blocked { background: rgba(255,176,32,.15); color: var(--blocked); }
+  .badge.stalled { background: rgba(255,82,82,.18); color: var(--stalled); }
+  .badge.unknown { background: rgba(154,160,166,.15); color: var(--unknown); }
+  .item .detail { font-size: 11px; color: var(--dim); margin-top: 6px; line-height: 1.5; max-height: 50px; overflow: hidden; }
+  .item .meta { font-size: 10px; color: #6b7280; margin-top: 6px; display: flex; gap: 10px; }
+
+  #toasts { position: fixed; right: 350px; bottom: 18px; z-index: 50; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+  .toast {
+    background: var(--panel2); border: 1px solid var(--line);
+    border-left: 4px solid var(--done);
+    border-radius: 8px; padding: 10px 14px; font-size: 13px;
+    box-shadow: 0 6px 24px rgba(0,0,0,.5);
+    animation: slidein .25s ease;
+  }
+  .toast.working { border-left-color: var(--working); }
+  .toast.blocked { border-left-color: var(--blocked); }
+  .toast.stalled { border-left-color: var(--stalled); }
+  @keyframes slidein { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: none; } }
+  .toast.bye { opacity: 0; transition: opacity .4s; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>🏢 Claude Office<span class="sub">세션 메타버스 모니터</span></h1>
+    <div class="chips">
+      <span class="chip"><span class="dot working"></span>작업중 <b id="c-working">0</b></span>
+      <span class="chip"><span class="dot blocked"></span>입력 대기 <b id="c-blocked">0</b></span>
+      <span class="chip"><span class="dot stalled"></span>멈춤 의심 <b id="c-stalled">0</b></span>
+      <span class="chip"><span class="dot done"></span>완료 <b id="c-done">0</b></span>
+    </div>
+    <div class="spacer"></div>
+    <label class="toggle"><input type="checkbox" id="hide-done" />완료 숨기기</label>
+    <span id="conn">연결 중…</span>
+  </header>
+  <main>
+    <div id="canvas-wrap"><canvas id="office" width="800" height="600"></canvas></div>
+    <aside id="panel">
+      <h2>SESSIONS</h2>
+      <ul id="list" style="list-style:none;margin:0;padding:0"></ul>
+    </aside>
+  </main>
+  <div id="toasts"></div>
+  <script src="app.js"></script>
+</body>
+</html>
