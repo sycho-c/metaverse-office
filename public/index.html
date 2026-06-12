@@ -7,43 +7,58 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏢</text></svg>" />
 <style>
   :root {
-    --bg: #f4f5f7;
-    --panel: #ffffff;
-    --panel2: #f7f8fa;
-    --line: #e4e7ec;
-    --text: #1f2329;
-    --dim: #6b7280;
-    --working: #2faf5f;
-    --done: #2b7fe0;
-    --blocked: #d98014;
-    --stalled: #e03b3b;
-    --unknown: #8a909c;
+    /* Claude Office Design System — Design Tokens */
+    --bg: #F0F3F8;          /* surface.background */
+    --panel: #FFFFFF;       /* surface.areaCard */
+    --panel2: #F8FAFC;      /* header */
+    --line: #CBD5E1;        /* border */
+    --text: #0F172A;        /* text.primary */
+    --secondary: #334155;   /* text.secondary */
+    --dim: #64748B;         /* text.tertiary */
+    --disabled: #94A3B8;
+    --working: #22C55E;     /* semantic.success */
+    --done: #3B82F6;        /* semantic.info */
+    --blocked: #F59E0B;     /* semantic.warning */
+    --stalled: #EF4444;     /* semantic.danger */
+    --unknown: #64748B;     /* semantic.neutral */
+    --primary-50: #E8F0FE;
+    --primary-100: #D2E3FC;
+    --primary-200: #A9C8F9;
+    --primary-500: #3B82F6;
+    --primary-700: #1D4ED8;
+    /* radius */ --r-sm: 8px; --r-md: 12px; --r-lg: 16px;
+    /* shadow */ --sh-sm: 0 1px 2px rgba(15,23,42,.06); --sh-md: 0 4px 12px rgba(15,23,42,.10); --sh-lg: 0 12px 24px rgba(15,23,42,.15);
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: "Apple SD Gothic Neo", "Pretendard", "Malgun Gothic", sans-serif;
+    font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
     display: flex; flex-direction: column;
   }
 
   header {
     display: flex; align-items: center; gap: 14px;
-    padding: 10px 16px;
-    background: var(--panel);
+    padding: 12px 16px;
+    background: var(--panel2);
     border-bottom: 1px solid var(--line);
     position: sticky; top: 0; z-index: 10;
   }
-  header h1 { font-size: 16px; margin: 0; letter-spacing: .5px; }
+  header h1 { font-size: 20px; line-height: 28px; font-weight: 700; margin: 0; letter-spacing: -.2px; color: var(--text); }
   header h1 .sub { color: var(--dim); font-weight: 400; font-size: 12px; margin-left: 8px; }
   .chips { display: flex; gap: 8px; margin-left: 8px; }
   .chip {
     display: inline-flex; align-items: center; gap: 6px;
-    font-size: 12px; padding: 3px 10px; border-radius: 20px;
-    background: var(--panel2); border: 1px solid var(--line); color: var(--dim);
+    font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 999px;
+    background: #F1F5F9; color: var(--dim);
   }
-  .chip b { color: var(--text); font-size: 13px; }
+  .chip b { font-size: 13px; font-weight: 800; }
+  .chip.working { background: #DCFCE7; color: #16A34A; }
+  .chip.blocked { background: #FEF3C7; color: #D97706; }
+  .chip.stalled { background: #FEE2E2; color: #DC2626; }
+  .chip.done { background: #DBEAFE; color: #2563EB; }
+  .chip .dot { display: none; }
   .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
   .dot.working { background: var(--working); }
   .dot.done { background: var(--done); }
@@ -69,72 +84,73 @@
   }
 
   aside#panel {
-    width: 330px; min-width: 330px;
-    background: #eef0f4;
-    border-left: 1px solid #d7dbe2;
+    width: 340px; min-width: 340px;
+    background: var(--bg);
+    border-left: 1px solid var(--line);
     overflow-y: auto;
-    padding: 12px;
+    padding: 16px;
   }
-  aside h2 { font-size: 14px; color: var(--dim); margin: 4px 4px 10px; font-weight: 600; letter-spacing: 1px; }
+  aside h2 { font-size: 12px; color: var(--dim); margin: 2px 2px 12px; font-weight: 700; letter-spacing: 1.2px; }
   /* 헤더 사용량 미니바 (확대) */
   .hu { display: flex; align-items: center; gap: 22px; margin-right: 10px; }
   .hu-item { display: flex; align-items: center; gap: 9px; cursor: default; }
   .hu-lbl { font-size: 13px; color: var(--dim); }
   .hu-track { width: 120px; height: 10px; border-radius: 6px; background: #e4e7ec; overflow: hidden; }
-  .hu-fill { display: block; height: 100%; width: 0; border-radius: 6px; background: #43d675; transition: width .4s ease; }
+  .hu-fill { display: block; height: 100%; width: 0; border-radius: 6px; background: var(--working); transition: width .4s ease; }
   .hu-pct { font-size: 15px; font-weight: 800; color: var(--text); min-width: 42px; text-align: right; }
   .hu-cost { font-size: 13px; color: var(--dim); font-weight: 600; }
   .hu-reset { display: none; }
   .item {
-    background: #ffffff;
-    border: 1px solid #dfe3ea;
+    background: var(--panel);
+    border: 1px solid var(--line);
     border-left: 7px solid var(--unknown);
-    border-radius: 10px;
-    padding: 10px 12px 11px;
-    margin-bottom: 9px;
+    border-radius: var(--r-md);
+    padding: 12px 14px 12px;
+    margin-bottom: 12px;
     cursor: pointer;
-    box-shadow: 0 1px 3px rgba(20,30,50,.07);
+    box-shadow: var(--sh-sm);
     transition: box-shadow .15s, border-color .15s, transform .1s;
   }
-  .item:hover { box-shadow: 0 3px 10px rgba(20,30,50,.13); transform: translateY(-1px); }
+  .item:hover { box-shadow: var(--sh-md); transform: translateY(-1px); }
   .item.working { border-left-color: var(--working); }
   .item.done { border-left-color: var(--done); }
   .item.blocked { border-left-color: var(--blocked); }
   .item.stalled { border-left-color: var(--stalled); }
   .item.unknown { border-left-color: var(--unknown); }
-  .item.hl { border-color: #2b7fe0; box-shadow: 0 0 0 2px rgba(43,127,224,.35); }
+  .item.hl { border-color: var(--primary-500); box-shadow: 0 0 0 2px rgba(59,130,246,.35); }
   .item .row1 { display: flex; align-items: center; gap: 8px; }
-  .item .name { font-size: 15px; font-weight: 700; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .badge { font-size: 11px; padding: 3px 9px; border-radius: 10px; font-weight: 700; flex-shrink: 0; }
-  .badge.working { background: rgba(67,214,117,.15); color: var(--working); }
-  .badge.done { background: rgba(77,163,255,.15); color: var(--done); }
-  .badge.blocked { background: rgba(255,176,32,.15); color: var(--blocked); }
-  .badge.stalled { background: rgba(255,82,82,.18); color: var(--stalled); }
-  .badge.unknown { background: rgba(154,160,166,.15); color: var(--unknown); }
+  .item .name { font-size: 14px; line-height: 20px; font-weight: 700; color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Tags (Status) — 디자인 시스템 pill */
+  .badge { font-size: 11px; line-height: 14px; padding: 4px 10px; border-radius: 999px; font-weight: 600; flex-shrink: 0; }
+  .badge.working { background: #DCFCE7; color: #16A34A; }
+  .badge.done { background: #DBEAFE; color: #2563EB; }
+  .badge.blocked { background: #FEF3C7; color: #D97706; }
+  .badge.stalled { background: #FEE2E2; color: #DC2626; }
+  .badge.unknown { background: #F1F5F9; color: #64748B; }
   .item .resp {
-    font-size: 13px; color: var(--dim); margin-top: 8px; line-height: 1.5;
+    font-size: 12px; color: var(--secondary); margin-top: 8px; line-height: 16px;
     display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
   }
   .item .lastreq {
-    font-size: 13px; color: #1f3a63; margin-top: 6px; line-height: 1.5;
-    background: rgba(43,127,224,.08); border-left: 2px solid rgba(43,127,224,.55);
-    border-radius: 4px; padding: 4px 7px;
+    font-size: 13px; color: var(--primary-700); margin-top: 8px; line-height: 1.5;
+    background: var(--primary-50); border: 1px solid var(--primary-100); border-left: 3px solid var(--primary-500);
+    border-radius: var(--r-sm); padding: 7px 9px;
     display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
   }
-  .item .meta { font-size: 12px; color: #9097a3; margin-top: 7px; display: flex; gap: 10px; }
+  .item .meta { font-size: 11px; line-height: 14px; color: var(--dim); margin-top: 9px; display: flex; gap: 10px; }
 
   #toasts { position: fixed; right: 350px; top: 64px; z-index: 50; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
   .toast {
-    background: #eaf3fe; border: 1px solid #bcd9f7;
+    background: #DBEAFE; border: 1px solid #BFDBFE;
     border-left: 5px solid var(--done);
-    border-radius: 8px; padding: 11px 16px; font-size: 14px; font-weight: 600; color: #1f2329;
-    box-shadow: 0 8px 26px rgba(20,30,50,.22);
+    border-radius: var(--r-md); padding: 11px 16px; font-size: 14px; font-weight: 600; color: var(--text);
+    box-shadow: var(--sh-lg);
     animation: slidein .25s ease;
   }
-  .toast.working { border-left-color: var(--working); background: #e7f8ee; border-color: #b6e6c8; }
-  .toast.done    { border-left-color: var(--done);    background: #eaf3fe; border-color: #bcd9f7; }
-  .toast.blocked { border-left-color: var(--blocked); background: #fef2e0; border-color: #f6d8a8; }
-  .toast.stalled { border-left-color: var(--stalled); background: #fdeae9; border-color: #f6bdba; }
+  .toast.working { border-left-color: var(--working); background: #DCFCE7; border-color: #BBF7D0; }
+  .toast.done    { border-left-color: var(--done);    background: #DBEAFE; border-color: #BFDBFE; }
+  .toast.blocked { border-left-color: var(--blocked); background: #FEF3C7; border-color: #FDE68A; }
+  .toast.stalled { border-left-color: var(--stalled); background: #FEE2E2; border-color: #FECACA; }
   @keyframes slidein { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: none; } }
   .toast.bye { opacity: 0; transition: opacity .4s; }
 </style>
@@ -143,10 +159,10 @@
   <header>
     <h1>🏢 Claude Office<span class="sub">세션 메타버스 모니터</span></h1>
     <div class="chips">
-      <span class="chip"><span class="dot working"></span>작업중 <b id="c-working">0</b></span>
-      <span class="chip"><span class="dot blocked"></span>입력 대기 <b id="c-blocked">0</b></span>
-      <span class="chip"><span class="dot stalled"></span>멈춤 의심 <b id="c-stalled">0</b></span>
-      <span class="chip"><span class="dot done"></span>완료 <b id="c-done">0</b></span>
+      <span class="chip working">작업중 <b id="c-working">0</b></span>
+      <span class="chip blocked">입력 대기 <b id="c-blocked">0</b></span>
+      <span class="chip stalled">멈춤 의심 <b id="c-stalled">0</b></span>
+      <span class="chip done">완료 <b id="c-done">0</b></span>
     </div>
     <div class="spacer"></div>
     <div id="usage" class="hu" style="display:none">

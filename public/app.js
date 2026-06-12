@@ -39,23 +39,24 @@ const C = {
   shadow: 'rgba(60,65,78,.13)',
 };
 
+// 디자인 시스템 시맨틱: success #22C55E / warning #F59E0B / danger #EF4444 / info #3B82F6 / neutral #64748B
 const SCREEN = {
-  working: '#b8f0c4', done: '#9fc3ff', blocked: '#ffd28a',
-  stalled: '#3a3d44', unknown: '#6b7078',
+  working: '#bbf7d0', done: '#bfdbfe', blocked: '#fed7aa',
+  stalled: '#334155', unknown: '#64748b',
 };
 
 const STATE_META = {
-  working: { color: '#30c158', label: '작업중',    emoji: null },
-  done:    { color: '#0a84ff', label: '완료',      emoji: '✅' },
-  blocked: { color: '#ff9f0a', label: '입력 대기', emoji: '⚠️' },
-  stalled: { color: '#ff453a', label: '멈춤 의심', emoji: '💤' },
-  unknown: { color: '#98989f', label: '알 수 없음', emoji: '❔' },
+  working: { color: '#22C55E', label: '작업중',    emoji: null },
+  done:    { color: '#3B82F6', label: '완료',      emoji: '✅' },
+  blocked: { color: '#F59E0B', label: '입력 대기', emoji: '⚠️' },
+  stalled: { color: '#EF4444', label: '멈춤 의심', emoji: '💤' },
+  unknown: { color: '#64748B', label: '알 수 없음', emoji: '❔' },
 };
 
-// 이름표 버블용 중간 톤 (밝은 바닥 대비 + 너무 어둡지 않게)
+// 이름표 버블 배경(흰 글씨) = 시맨틱 색 그대로
 const TAG_COLOR = {
-  working: '#2ba558', done: '#3b82d6', blocked: '#e2912a',
-  stalled: '#dd4b42', unknown: '#747982',
+  working: '#22C55E', done: '#3B82F6', blocked: '#F59E0B',
+  stalled: '#EF4444', unknown: '#64748B',
 };
 
 const SKINS  = ['#f1c27d', '#e0ac69', '#ffdbac', '#d9a066'];
@@ -163,7 +164,7 @@ function resetLabel(epochSec) {
     { weekday: 'short', hour: '2-digit', minute: '2-digit' });
   return h >= 1 ? `${h}시간 ${m}분 후 재설정 · ${when}` : `${m}분 후 재설정 · ${when}`;
 }
-function usageColor(p) { return p >= 85 ? '#ff5252' : p >= 60 ? '#ffb020' : '#43d675'; }
+function usageColor(p) { return p >= 85 ? '#EF4444' : p >= 60 ? '#F59E0B' : '#22C55E'; }
 // 스냅샷 신선도: office-usage.json 은 statusline 렌더 시점에만 갱신됨(라이브 아님)
 function freshnessLabel(tsMs) {
   if (!tsMs) return '';
