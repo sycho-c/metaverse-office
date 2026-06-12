@@ -242,15 +242,18 @@ function renderPanel() {
         <span class="name"></span>
         <span class="badge ${s.effective}">${m.label}</span>
       </div>
-      <div class="detail"></div>
       <div class="lastreq"></div>
+      <div class="resp"></div>
       <div class="meta"><span>📁 ${s.project || '?'}</span><span>🕐 ${rel(s.lastActivity)}</span></div>`;
     li.querySelector('.name').textContent = s.name;
-    li.querySelector('.detail').textContent = s.detail || '';
     const lr = li.querySelector('.lastreq');
     if (s.lastPrompt) { lr.textContent = '🗨 ' + s.lastPrompt; lr.title = s.lastPrompt; }
     else lr.style.display = 'none';
-    li.title = s.lastPrompt ? `내 마지막 요청: ${s.lastPrompt}` : (s.detail || s.name);
+    const rp = li.querySelector('.resp');
+    const respText = s.lastResponse || s.detail || '';
+    if (respText) { rp.textContent = respText; rp.title = respText; }
+    else rp.style.display = 'none';
+    li.title = s.lastPrompt ? `내 요청: ${s.lastPrompt}\n\nAI 응답: ${respText}` : respText;
     li.onclick = () => { highlightId = s.id === highlightId ? null : s.id; renderPanel(); };
     listEl.appendChild(li);
   }

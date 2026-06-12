@@ -59,48 +59,64 @@ function transcriptMtimeFor(sid, projectDirs) {
   return 0;
 }
 
-// 트랜스크립트에서 "사용자가 마지막에 보낸 요청" 추출 (AI 응답/도구결과 제외)
-// mtime 으로 캐시 → 변경 시에만 재파싱
-const promptCache = new Map();            // path → { mtime, prompt }
-function lastUserPrompt(p, mtime) {
-  if (!p) return '';
+// 트랜스크립트에서 마지막 "사람 요청"(prompt) + 마지막 "AI 응답"(response) 추출
+// 한 번 스캔으로 둘 다 구하고 mtime 으로 캐시 → 변경 시에만 재파싱
+const promptCache = new Map();            // path → { mtime, prompt, response }
+function blockText(content) {
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    const tp = content.find((b) => b && b.type === 'text');
+    return tp ? (tp.text || '') : '';
+  }
+  return '';
+}
+function clean(text) {
+  return (text || '').replace(/\[Image #\d+\]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function lastExchange(p, mtime) {
+  const empty = { prompt: '', response: '' };
+  if (!p) return empty;
   const cached = promptCache.get(p);
-  if (cached && cached.mtime === mtime) return cached.prompt;
-  let prompt = '';
+  if (cached && cached.mtime === mtime) return cached;
+  let prompt = '', response = '';
   try {
     const lines = fs.readFileSync(p, 'utf8').split('\n');
-    for (let i = lines.length - 1; i >= 0; i--) {
+    for (let i = lines.length - 1; i >= 0 && (!prompt || !response); i--) {
       const line = lines[i].trim();
       if (!line || line[0] !== '{') continue;
       let ev;
       try { ev = JSON.parse(line); } catch (e) { continue; }
-      if (ev.type !== 'user' || ev.isMeta || ev.isSidechain) continue;
+      if (ev.isSidechain) continue;        // 서브에이전트 메시지 제외
       const msg = ev.message;
       if (!msg) continue;
-      let text = '';
-      if (typeof msg.content === 'string') text = msg.content;
-      else if (Array.isArray(msg.content)) {
-        const tp = msg.content.find((b) => b && b.type === 'text');
-        if (!tp) continue;                 // tool_result 전용 → 사람 요청 아님
-        text = tp.text || '';
+
+      if (!response && ev.type === 'assistant') {     // 마지막 AI 응답(텍스트)
+        const txt = clean(blockText(msg.content));
+        if (txt) response = txt;
+        continue;
       }
-      text = (text || '').trim();
-      if (!text) continue;
-      // 시스템 주입 메시지 스킵 → 실제 사람 요청만 탐색
-      //  <task-notification> <bash-stdout> <command-…> <system-reminder> <local-command> 등 < 로 시작하는 래퍼,
-      //  API Error / Caveat / 이미지 첨부 표식
-      if (text[0] === '<' || text.startsWith('API Error') ||
-          text.startsWith('Caveat:') || text.startsWith('[Image #') ||
-          text.startsWith('[Request interrupted') ||
-          text.startsWith('This session is being continued')) continue;
-      prompt = text.replace(/\[Image #\d+\]/g, ' ').replace(/\s+/g, ' ').trim();
-      if (!prompt) continue;
-      break;
+      if (!prompt && ev.type === 'user' && !ev.isMeta) {   // 마지막 사람 요청
+        const raw = (typeof msg.content === 'string')
+          ? msg.content
+          : (Array.isArray(msg.content) && msg.content.find((b) => b && b.type === 'text') ? blockText(msg.content) : null);
+        if (raw == null) continue;          // tool_result 전용 → 사람 요청 아님
+        const text = raw.trim();
+        if (!text) continue;
+        // 시스템 주입 메시지 스킵 (<task-notification>/<bash-stdout>/<command-…>/<system-reminder> 등)
+        if (text[0] === '<' || text.startsWith('API Error') ||
+            text.startsWith('Caveat:') || text.startsWith('[Image #') ||
+            text.startsWith('[Request interrupted') ||
+            text.startsWith('This session is being continued')) continue;
+        const c = clean(text);
+        if (c) prompt = c;
+      }
     }
-  } catch (e) { prompt = ''; }
+  } catch (e) { /* noop */ }
   if (prompt.length > 280) prompt = prompt.slice(0, 280) + '…';
-  promptCache.set(p, { mtime, prompt });
-  return prompt;
+  if (response.length > 240) response = response.slice(0, 240) + '…';
+  const out = { mtime, prompt, response };
+  promptCache.set(p, out);
+  return out;
 }
 
 function readJobs() {
@@ -134,7 +150,7 @@ function readJobs() {
     const transcriptMtime = Math.max(mtA, mtB);
     const bestSid = mtB > mtA ? st.resumeSessionId : st.sessionId;
     const bestPath = (sidPathCache.get(bestSid) || {}).path;
-    const lastPrompt = lastUserPrompt(bestPath, transcriptMtime);
+    const ex = lastExchange(bestPath, transcriptMtime);
     let stateMtime = 0;
     try { stateMtime = fs.statSync(stPath).mtimeMs; } catch (e) { /* noop */ }
 
@@ -164,7 +180,8 @@ function readJobs() {
       state: rawState,
       effective,
       detail: st.detail ? String(st.detail) : '',
-      lastPrompt,
+      lastPrompt: ex.prompt,
+      lastResponse: ex.response,
       tempo: st.tempo || '',
       project: cwd ? path.basename(cwd) : '',
       cwd,
