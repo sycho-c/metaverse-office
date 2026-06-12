@@ -1181,15 +1181,26 @@ function roomAt(x, y) {
 }
 // 도착지: 가구 "바로 앞"(아래에서 곧장 걸어 올라가 가구에 붙어 섬) — 방 깊숙이
 function roomPOIs(r) {
+  const cx = r.x + r.w / 2;
   if (r.type === 'break') return [
-    { x: r.x + 24, y: r.y + 72 },               // 좌측 소파 앞
-    { x: r.x + r.w - 26, y: r.y + 72 },         // 우측 소파 앞
-    { x: r.x + r.w / 2, y: r.y + 76 },          // 중앙 커피테이블 앞
+    { x: r.x + 24, y: r.y + 56 },               // 좌 소파 바로 앞(깊음)
+    { x: r.x + r.w - 26, y: r.y + 56 },         // 우 소파 바로 앞(깊음)
+    { x: cx, y: r.y + 60 },                     // 커피테이블 앞
+    { x: r.x + Math.round(r.w * 0.32), y: r.y + 70 }, // 좌측 가운데
+    { x: r.x + Math.round(r.w * 0.68), y: r.y + 70 }, // 우측 가운데
+    { x: cx - 26, y: r.y + 98 },                // 중하단 라운지
+    { x: r.x + 46, y: r.y + 104 },              // 좌하단
+    { x: r.x + r.w - 50, y: r.y + 100 },        // 우하단
   ];
   return [
-    { x: r.x + r.w - 38, y: r.y + 46 },         // 냉장고 바로 앞
+    { x: r.x + r.w - 30, y: r.y + 46 },         // 냉장고 바로 앞(깊음)
+    { x: r.x + 46, y: r.y + 42 },               // 카운터 앞(깊음)
     { x: r.x + 22, y: r.y + 70 },               // 스낵선반 앞
-    { x: r.x + r.w / 2 + 12, y: r.y + 72 },     // 원형테이블 앞
+    { x: cx + 14, y: r.y + 74 },                // 원형테이블 앞
+    { x: r.x + Math.round(r.w * 0.36), y: r.y + 62 }, // 중앙 깊은 곳
+    { x: cx - 14, y: r.y + 100 },               // 중하단
+    { x: r.x + 50, y: r.y + 104 },              // 좌하단
+    { x: r.x + r.w - 52, y: r.y + 98 },         // 우하단
   ];
 }
 
@@ -1329,7 +1340,8 @@ function tickWalker(w, eff, dt) {
           const pois = roomPOIs(r).filter((p) => !blocked(p.x, p.y));
           if (pois.length) {
             const poi = pois[Math.floor(Math.random() * pois.length)];
-            const path = pathFind(w.x, w.y, poi.x, poi.y);
+            const jx = Math.random() * 10 - 5, jy = Math.random() * 8 - 4;   // 같은 지점 겹침 방지
+            const path = pathFind(w.x, w.y, poi.x + jx, poi.y + jy);
             if (path) { w.roomRef = r; w.path = path; w.mode = 'out'; w.stuck = 0; started = true; }
           }
         }
@@ -1347,8 +1359,20 @@ function tickWalker(w, eff, dt) {
     if (!eligible) startBack(w);
     else if (moveAlong(w, dt)) { w.mode = 'loiter'; w.timer = 5200 + Math.random() * 6000; }
   } else if (w.mode === 'loiter') {
-    w.timer -= dt;
-    if (!eligible || w.timer <= 0) startBack(w);
+    if (w.path && w.path.length) {            // 방 안 산책 이동 중(타이머 정지)
+      moveAlong(w, dt);
+    } else {
+      w.timer -= dt;
+      if (!eligible || w.timer <= 0) startBack(w);
+      else if (w.roomRef && Math.random() < 0.015) {   // 가끔 방 안 다른 지점으로 걸어감
+        const pois = roomPOIs(w.roomRef).filter((p) => !blocked(p.x, p.y));
+        if (pois.length) {
+          const poi = pois[Math.floor(Math.random() * pois.length)];
+          const p = pathFind(w.x, w.y, poi.x + (Math.random() * 10 - 5), poi.y + (Math.random() * 8 - 4));
+          if (p && p.length) w.path = p;
+        }
+      }
+    }
   } else if (w.mode === 'back') {
     if (moveAlong(w, dt) || w.stuck > 4000) {
       w.x = w.hx; w.y = w.hy; w.roomRef = null; w.path = null;
