@@ -1498,27 +1498,29 @@ function drawPodABack(px, py, seats, t) {
     pushTag(s, cx, py - 9 + (k ? 7 : 0), look);
   }
   shadow(px + 46, botDeskY + 14, 86, 5);
+  // 윗줄: 사람이 아래(뷰어)를 향해 앉음 → 모니터 "뒷면"이 보임
   for (let k = 0; k < 2; k++) {
     drawDeskH(cxs[k], topDeskY, true);
     const s = seats[k];
     if (s) {
-      const look = lookOf(s.id);
-      if (look.deskKind === 2) drawLaptop(cxs[k] - 5, topDeskY - 8, s.effective);
-      else drawMonitorFront(cxs[k] - 6, topDeskY - 10, s.effective, t);
-      deskClutterH(cxs[k], topDeskY, s.effective, t);
+      drawMonitorBack(cxs[k] - 6, topDeskY - 9, s.effective);
+      ctx.fillStyle = '#f2efe8';                    // 책상 위 노트
+      ctx.fillRect(cxs[k] + 8, topDeskY + 3, 5, 4);
     } else {
-      drawMonitorOff(cxs[k] - 6, topDeskY - 10, false);
+      drawMonitorOff(cxs[k] - 6, topDeskY - 9, true);
     }
   }
+  // 아랫줄: 사람이 위(뷰어 반대)를 향해 앉음 → 모니터 "앞면(화면)"이 보임
   for (let k = 0; k < 2; k++) {
     drawDeskH(cxs[k], botDeskY, true);
     const s = seats[k + 2];
     if (s) {
-      drawMonitorBack(cxs[k] - 6, botDeskY - 9, s.effective);
-      ctx.fillStyle = '#f2efe8';
-      ctx.fillRect(cxs[k] + 8, botDeskY + 3, 5, 4);
+      const look = lookOf(s.id);
+      if (look.deskKind === 2) drawLaptop(cxs[k] - 5, botDeskY - 8, s.effective);
+      else drawMonitorFront(cxs[k] - 6, botDeskY - 10, s.effective, t);
+      deskClutterH(cxs[k], botDeskY, s.effective, t);
     } else {
-      drawMonitorOff(cxs[k] - 6, botDeskY - 9, true);
+      drawMonitorOff(cxs[k] - 6, botDeskY - 10, false);
     }
   }
 }
