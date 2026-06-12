@@ -1447,20 +1447,30 @@ function drawSpeech(t) {
   }
 }
 
-// ---------- 클러스터 ----------
-function drawPodA(px, py, seats, t) {
-  const cxs = [px + 27, px + 65];
-  const topDeskY = py + 34;
-  const botDeskY = py + 46;
+// ---------- 클러스터 (깊이정렬용 밴드 분리: floor 러그 / back 뒷줄+책상 / front 앞줄) ----------
+function drawPodAFloor(px, py, p) {
+  const h = hash('pod' + p);
+  const rug = C.rugs[h % C.rugs.length];
+  ctx.fillStyle = rug[0];
+  ctx.fillRect(px + 2, py + 8, POD_W - 4, POD_H - 10);
+  ctx.fillStyle = rug[1];
+  ctx.fillRect(px + 4, py + 10, POD_W - 8, POD_H - 14);
+  ctx.fillStyle = C.rugLine;
+  ctx.fillRect(px + 4, py + 10, POD_W - 8, 1);
+}
 
+// 뒷줄 좌석 + 양쪽 책상/모니터 (변형 A)
+function drawPodABack(px, py, seats, t) {
+  const cxs = [px + 27, px + 65];
+  const topDeskY = py + 34, botDeskY = py + 46;
   for (let k = 0; k < 2; k++) {
     const s = seats[k];
     const cx = cxs[k];
     ctx.fillStyle = C.chairDark;                 // 의자(항상)
     ctx.fillRect(cx - 6, py + 11, 12, 2);
-    if (!s) continue;                            // 빈 좌석(책상/모니터는 아래에서)
+    if (!s) continue;
     const w = ensureWalker(s, cx, py + 15, 'down');
-    if (w.mode !== 'sit') continue;              // 자리 비움
+    if (w.mode !== 'sit') continue;
     const look = lookOf(s.id);
     const eff = s.effective;
     const bob = eff === 'working' ? Math.round(Math.sin(t / 200 + look.phase)) : 0;
@@ -1495,16 +1505,21 @@ function drawPodA(px, py, seats, t) {
       drawMonitorOff(cxs[k] - 6, botDeskY - 9, true);
     }
   }
+}
+
+// 앞줄 좌석 (변형 A) — 책상보다 앞(아래)이므로 별도 밴드
+function drawPodAFront(px, py, seats, t) {
+  const cxs = [px + 27, px + 65];
   for (let k = 0; k < 2; k++) {
     const s = seats[k + 2];
     const cx = cxs[k];
-    if (!s) {                                    // 빈 좌석 의자
+    if (!s) {
       ctx.fillStyle = C.chairDark;
       ctx.fillRect(cx - 5, py + 83, 10, 2);
       continue;
     }
     const w = ensureWalker(s, cx, py + 67, 'up');
-    if (w.mode !== 'sit') {                       // 빈 의자만
+    if (w.mode !== 'sit') {
       ctx.fillStyle = C.chairDark;
       ctx.fillRect(cx - 5, py + 83, 10, 2);
       continue;
@@ -1523,54 +1538,51 @@ function drawPodA(px, py, seats, t) {
   }
 }
 
-function drawPodB(px, py, seats, t) {
+// 변형 B 한 줄(좌우 책상+좌석) 렌더 — back/front 공통
+function drawPodBRow(px, py, seats, t, r) {
   const deskLX = px + 33, deskRX = px + 46;
-  const rows = [py + 18, py + 56];
-  for (let r = 0; r < 2; r++) {
-    const dy = rows[r];
-    drawDeskV(deskLX, dy);
-    drawDeskV(deskRX, dy);
-    ctx.fillStyle = '#f2efe8';
-    ctx.fillRect(deskLX + 4, dy + 22, 5, 4);
-    ctx.fillRect(deskRX + 4, dy + 6, 5, 4);
-    for (let c = 0; c < 2; c++) {
-      const s = seats[r * 2 + c];
-      const face = c === 0 ? 'right' : 'left';
-      const cx = c === 0 ? px + 17 : px + 75;
-      if (!s) { drawPlant(cx - 4, dy + 6, false); continue; }
-      const w = ensureWalker(s, cx, dy + 8, face);
-      const eff = s.effective;
-      drawMonitorSide(c === 0 ? deskLX + 4 : deskRX + 4, dy + 10 + r * 2, eff, face);
-      ctx.fillStyle = C.chairDark;                // 의자(항상)
-      ctx.fillRect(c === 0 ? cx - 8 : cx + 6, dy + 10, 2, 12);
-      if (w.mode !== 'sit') continue;             // 자리 비움
-      const look = lookOf(s.id);
-      const bob = eff === 'working' ? Math.round(Math.sin(t / 200 + look.phase)) : 0;
-      const hy = dy + 8 + bob;
-      shadow(cx, hy + 18, 16, 4);
-      drawHead(cx, hy, look, face, eff);
-      drawBody(cx, hy + 8, look, eff, t, face);
-      cellRects.push({ x: cx - 16, y: dy - 6, w: 34, h: 40, s });
-      pushTag(s, cx, dy - 15 + (c ? 7 : 0), look);
-    }
+  const dy = r === 0 ? py + 18 : py + 56;
+  drawDeskV(deskLX, dy);
+  drawDeskV(deskRX, dy);
+  ctx.fillStyle = '#f2efe8';
+  ctx.fillRect(deskLX + 4, dy + 22, 5, 4);
+  ctx.fillRect(deskRX + 4, dy + 6, 5, 4);
+  for (let c = 0; c < 2; c++) {
+    const s = seats[r * 2 + c];
+    const face = c === 0 ? 'right' : 'left';
+    const cx = c === 0 ? px + 17 : px + 75;
+    if (!s) { drawPlant(cx - 4, dy + 6, false); continue; }
+    const w = ensureWalker(s, cx, dy + 8, face);
+    const eff = s.effective;
+    drawMonitorSide(c === 0 ? deskLX + 4 : deskRX + 4, dy + 10 + r * 2, eff, face);
+    ctx.fillStyle = C.chairDark;
+    ctx.fillRect(c === 0 ? cx - 8 : cx + 6, dy + 10, 2, 12);
+    if (w.mode !== 'sit') continue;
+    const look = lookOf(s.id);
+    const bob = eff === 'working' ? Math.round(Math.sin(t / 200 + look.phase)) : 0;
+    const hy = dy + 8 + bob;
+    shadow(cx, hy + 18, 16, 4);
+    drawHead(cx, hy, look, face, eff);
+    drawBody(cx, hy + 8, look, eff, t, face);
+    cellRects.push({ x: cx - 16, y: dy - 6, w: 34, h: 40, s });
+    pushTag(s, cx, dy - 15 + (c ? 7 : 0), look);
   }
 }
 
-function drawPod(p, px, py, seats, t) {
+// band: 'floor' | 'back' | 'front'
+function drawPod(p, px, py, seats, t, band) {
   ctx.setTransform(S, 0, 0, S, 0, 0);
-  const h = hash('pod' + p);
-  const rug = C.rugs[h % C.rugs.length];
-  ctx.fillStyle = rug[0];
-  ctx.fillRect(px + 2, py + 8, POD_W - 4, POD_H - 10);
-  ctx.fillStyle = rug[1];
-  ctx.fillRect(px + 4, py + 10, POD_W - 8, POD_H - 14);
-  ctx.fillStyle = C.rugLine;
-  ctx.fillRect(px + 4, py + 10, POD_W - 8, 1);
-
-  if (podVariantB(p, seats)) drawPodB(px, py, seats, t);
-  else drawPodA(px, py, seats, t);
-
-  if ((h >>> 12) % 2) drawPlant(px + POD_W - 10, py + POD_H - 24, true);
+  const B = podVariantB(p, seats);
+  if (band === 'floor') { drawPodAFloor(px, py, p); return; }
+  if (band === 'back') {
+    if (B) drawPodBRow(px, py, seats, t, 0);
+    else drawPodABack(px, py, seats, t);
+    return;
+  }
+  // front
+  if (B) drawPodBRow(px, py, seats, t, 1);
+  else drawPodAFront(px, py, seats, t);
+  if ((hash('pod' + p) >>> 12) % 2) drawPlant(px + POD_W - 10, py + POD_H - 24, true);
 }
 
 // 빈 슬롯: 라운지 비네트 (자유 배치의 빈 공간 채움)
@@ -1707,12 +1719,18 @@ function frame(t) {
   }
   tickWalkers(vis);               // 보행 로직 갱신(그리기는 아래 깊이정렬에서)
 
-  // 깊이정렬: 책상 클러스터와 보행 캐릭터를 "발끝 Y" 기준으로 섞어 그림
-  // → 책상 뒤(위쪽)에 있는 캐릭터는 책상에 가려지고, 앞(아래쪽)이면 책상 위로 보임(밟는 현상 제거)
+  // 바닥 패스: pod 러그는 항상 모두의 아래(러그가 캐릭터를 덮는 현상 방지)
+  for (let p = 0; p < layout.pods; p++) {
+    drawPod(p, layout.podPos[p].x, layout.podPos[p].y, seatMap[p] || [], t, 'floor');
+  }
+
+  // 깊이정렬: pod를 back(뒷줄+책상)/front(앞줄) 밴드로 쪼개고 보행 캐릭터를 발끝 Y로 섞어 그림
+  // → 책상 뒤(위쪽) 캐릭터는 가려지고, 앞(아래쪽)이면 위로. 러그/책상이 캐릭터를 묻는 현상 제거
   const actors = [];
   for (let p = 0; p < layout.pods; p++) {
-    const pos = layout.podPos[p];
-    actors.push({ y: pos.y + POD_H, draw: () => drawPod(p, pos.x, pos.y, seatMap[p] || [], t) });
+    const pos = layout.podPos[p], seats = seatMap[p] || [];
+    actors.push({ y: pos.y + 40, draw: () => drawPod(p, pos.x, pos.y, seats, t, 'back') });
+    actors.push({ y: pos.y + 92, draw: () => drawPod(p, pos.x, pos.y, seats, t, 'front') });
   }
   for (const s of vis) {
     const w = walkers.get(s.id);
