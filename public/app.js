@@ -16,8 +16,8 @@ const CORRIDOR_H = 26;
 
 // 애플 스타일 팔레트 (화이트 · 라이트오크 · 알루미늄 · 소프트 그레이)
 const C = {
-  // 작업 영역 바닥: 블루그레이(방 따뜻한 우드/타일이 도드라지도록)
-  tile: '#bcc4d0', tileAlt: '#b4bcca', grout: 'rgba(70,82,104,.10)',
+  // 작업 영역 바닥: 매끄러운 단색 블루그레이(체크·흰점 없음, 시안 스와치 매칭)
+  tile: '#a7b3c6', tileAlt: '#a2aec2', grout: 'rgba(60,72,96,.05)',
   wall: '#cdd5e0', wallShade: '#b3bdcb', wallDark: '#9ba6b6',
   glass: '#b5dcf2', glassDeep: '#8cc6e8',
   roomWood: '#ecd9b4', roomWoodAlt: '#e6d1a6', roomWoodSeam: 'rgba(160,120,60,.18)',
@@ -329,18 +329,14 @@ function computeLayout(n) {
 // ---------- 바닥/벽 ----------
 function drawFloor(W, H) {
   ctx.setTransform(S, 0, 0, S, 0, 0);
-  const T = 28;
-  for (let ty = 0, r = 0; ty < H; ty += T, r++) {
-    for (let tx = 0, c = 0; tx < W; tx += T, c++) {
-      ctx.fillStyle = (r + c) % 2 ? C.tileAlt : C.tile;
-      ctx.fillRect(tx, ty, T, T);
-      ctx.fillStyle = C.grout;
-      ctx.fillRect(tx, ty, T, 1);
-      ctx.fillRect(tx, ty, 1, T);
-      ctx.fillStyle = 'rgba(255,255,255,.35)';
-      ctx.fillRect(tx + 2, ty + 2, 6, 1);
-    }
-  }
+  // 단색 블루그레이 바닥 (체크무늬·흰 하이라이트 제거 → 시안처럼 매끈)
+  ctx.fillStyle = C.tile;
+  ctx.fillRect(0, 0, W, H);
+  // 아주 옅은 대형 타일 seam (밋밋함만 살짝 깸, 거의 안 보임)
+  ctx.fillStyle = C.grout;
+  const T = 60;
+  for (let x = T; x < W; x += T) ctx.fillRect(x, 0, 1, H);
+  for (let y = T; y < H; y += T) ctx.fillRect(0, y, W, 1);
 }
 
 function drawWalls(W, H) {
