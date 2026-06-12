@@ -163,10 +163,23 @@ function resetLabel(epochSec) {
   return h >= 1 ? `${h}시간 ${m}분 후 재설정 · ${when}` : `${m}분 후 재설정 · ${when}`;
 }
 function usageColor(p) { return p >= 85 ? '#ff5252' : p >= 60 ? '#ffb020' : '#43d675'; }
+// 스냅샷 신선도: office-usage.json 은 statusline 렌더 시점에만 갱신됨(라이브 아님)
+function freshnessLabel(tsMs) {
+  if (!tsMs) return '';
+  const age = Date.now() - tsMs;
+  if (age < 90e3) return '방금 기준';
+  const m = Math.round(age / 60e3);
+  if (m < 60) return `${m}분 전 기준`;
+  const h = Math.floor(m / 60);
+  return `${h}시간 ${m % 60}분 전 기준`;
+}
 function renderUsage(u) {
   const box = document.getElementById('usage');
   if (!u || (u.fiveHourPct == null && u.weeklyPct == null)) { box.style.display = 'none'; return; }
   box.style.display = 'flex';
+  const fresh = freshnessLabel(u.ts);
+  const stale = u.ts ? (Date.now() - u.ts > 5 * 60e3) : false;   // 5분 초과 → 흐리게
+  box.style.opacity = stale ? '0.5' : '1';
   const set = (itemId, pctId, fillId, label, pct, reset) => {
     const p = pct == null ? null : Math.round(pct);
     document.getElementById(pctId).textContent = p == null ? '–' : p + '%';
@@ -174,12 +187,15 @@ function renderUsage(u) {
     f.style.width = (p == null ? 0 : Math.min(100, p)) + '%';
     f.style.background = usageColor(p || 0);
     const r = resetLabel(reset);
-    document.getElementById(itemId).title = r ? `${label} ${p}% · ${r}` : `${label} ${p}%`;
+    // statusline rate_limits 기반 정수값 스냅샷 — 설정 화면과 ±1% 차이는 반올림·시점 차이(정상)
+    const parts = [`${label} ${p}%`, r, fresh, 'statusline 스냅샷 · 설정값과 ±1%는 반올림/시점 차이'].filter(Boolean);
+    document.getElementById(itemId).title = parts.join(' · ');
   };
   set('u5item', 'u5pct', 'u5fill', '현재 세션·5시간', u.fiveHourPct, u.fiveHourResetsAt);
   set('uwitem', 'uwpct', 'uwfill', '주간(모든 모델)', u.weeklyPct, u.weeklyResetsAt);
   const cost = document.getElementById('ucost');
   cost.textContent = (u.costUSD != null) ? `$${Number(u.costUSD).toFixed(2)}` : '';
+  cost.title = fresh ? `누적 비용 · ${fresh}` : '누적 비용';
 }
 
 function update(next) {
