@@ -7,17 +7,17 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏢</text></svg>" />
 <style>
   :root {
-    --bg: #17181d;
-    --panel: #1f2128;
-    --panel2: #262932;
-    --line: #32363f;
-    --text: #e8eaf0;
-    --dim: #9aa0ad;
-    --working: #43d675;
-    --done: #4da3ff;
-    --blocked: #ffb020;
-    --stalled: #ff5252;
-    --unknown: #9aa0a6;
+    --bg: #f4f5f7;
+    --panel: #ffffff;
+    --panel2: #f7f8fa;
+    --line: #e4e7ec;
+    --text: #1f2329;
+    --dim: #6b7280;
+    --working: #2faf5f;
+    --done: #2b7fe0;
+    --blocked: #d98014;
+    --stalled: #e03b3b;
+    --unknown: #8a909c;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
@@ -63,7 +63,7 @@
   canvas#office {
     image-rendering: pixelated;
     border-radius: 10px;
-    box-shadow: 0 8px 40px rgba(0,0,0,.45);
+    box-shadow: 0 8px 40px rgba(0,0,0,.15);
     cursor: pointer;
   }
 
@@ -79,7 +79,7 @@
   .hu { display: flex; align-items: center; gap: 22px; margin-right: 10px; }
   .hu-item { display: flex; align-items: center; gap: 9px; cursor: default; }
   .hu-lbl { font-size: 13px; color: var(--dim); }
-  .hu-track { width: 120px; height: 10px; border-radius: 6px; background: #2b2f38; overflow: hidden; }
+  .hu-track { width: 120px; height: 10px; border-radius: 6px; background: #e4e7ec; overflow: hidden; }
   .hu-fill { display: block; height: 100%; width: 0; border-radius: 6px; background: #43d675; transition: width .4s ease; }
   .hu-pct { font-size: 15px; font-weight: 800; color: var(--text); min-width: 42px; text-align: right; }
   .hu-cost { font-size: 13px; color: var(--dim); font-weight: 600; }
@@ -93,7 +93,7 @@
     cursor: pointer;
     transition: border-color .15s, transform .1s;
   }
-  .item:hover { border-color: #4a4f5c; }
+  .item:hover { border-color: #c3c8d0; }
   .item.hl { border-color: var(--blocked); }
   .item .row1 { display: flex; align-items: center; gap: 8px; }
   .item .name { font-size: 13px; font-weight: 700; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -105,19 +105,19 @@
   .badge.unknown { background: rgba(154,160,166,.15); color: var(--unknown); }
   .item .detail { font-size: 11px; color: var(--dim); margin-top: 6px; line-height: 1.5; max-height: 50px; overflow: hidden; }
   .item .lastreq {
-    font-size: 11px; color: #cfd6e6; margin-top: 6px; line-height: 1.45;
-    background: rgba(77,163,255,.08); border-left: 2px solid rgba(77,163,255,.5);
+    font-size: 11px; color: #1f3a63; margin-top: 6px; line-height: 1.45;
+    background: rgba(43,127,224,.08); border-left: 2px solid rgba(43,127,224,.55);
     border-radius: 4px; padding: 4px 7px;
     display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
   }
-  .item .meta { font-size: 10px; color: #6b7280; margin-top: 6px; display: flex; gap: 10px; }
+  .item .meta { font-size: 10px; color: #9097a3; margin-top: 6px; display: flex; gap: 10px; }
 
   #toasts { position: fixed; right: 350px; top: 64px; z-index: 50; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
   .toast {
-    background: var(--panel2); border: 1px solid var(--line);
+    background: #ffffff; border: 1px solid var(--line);
     border-left: 4px solid var(--done);
-    border-radius: 8px; padding: 10px 14px; font-size: 13px;
-    box-shadow: 0 6px 24px rgba(0,0,0,.5);
+    border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--text);
+    box-shadow: 0 6px 24px rgba(0,0,0,.14);
     animation: slidein .25s ease;
   }
   .toast.working { border-left-color: var(--working); }
