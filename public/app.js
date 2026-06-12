@@ -21,7 +21,7 @@ const C = {
   wall: '#cdd5e0', wallShade: '#b3bdcb', wallDark: '#9ba6b6',
   glass: '#b5dcf2', glassDeep: '#8cc6e8',
   roomWood: '#ecd9b4', roomWoodAlt: '#e6d1a6', roomWoodSeam: 'rgba(160,120,60,.18)',
-  roomB: '#eff0f1', roomBalt: '#e8e9eb',
+  roomB: '#f1ece3', roomBalt: '#eae4d8',          // 탕비실: 따뜻한 크림 타일
   roomEdge: '#c2c6cc',
   rugs: [['#dde3ec', '#e5eaf1'], ['#dee8de', '#e6eee6'], ['#ece5da', '#f1ebe2']],
   rugLine: 'rgba(0,0,0,.05)',
@@ -30,7 +30,7 @@ const C = {
   alu: '#d4d7dc', aluHi: '#e8eaee', aluDark: '#b2b6be',
   white: '#f8f9fa', whiteEdge: '#dfe2e6',
   chair: '#aeb3bb', chairSeat: '#c9ccd2', chairDark: '#8d929b',
-  sofaBase: '#b4b9c1', sofaSeat: '#cdd1d7', sofaHi: '#dde0e5', sofaDark: '#969ba4',
+  sofaBase: '#8fb98a', sofaSeat: '#a8cca0', sofaHi: '#c4ddba', sofaDark: '#6e9b6b',  // 세이지 그린 라운지
   tan: '#d8b27e', tanDark: '#bb9560',
   potDark: '#c9ccd2', pot: '#eceef0', potHi: '#ffffff',
   leafDark: '#3a9457', leaf: '#4cb56c', leafHi: '#6cc986',
@@ -459,9 +459,12 @@ function drawCoffeeTable(x, y) {
 
 function drawRoundTable(cx, cy) {
   shadow(cx, cy + 8, 20, 5);
-  ctx.fillStyle = C.chairDark;
+  ctx.fillStyle = '#6e9b6b';                      // 세이지 그린 의자
   for (const [dx, dy] of [[-11, 0], [11, 0]]) {
     ctx.fillRect(cx + dx - 3, cy + dy - 3, 6, 6);
+    ctx.fillStyle = '#86b482';
+    ctx.fillRect(cx + dx - 3, cy + dy - 3, 6, 2);
+    ctx.fillStyle = '#6e9b6b';
   }
   ctx.fillStyle = C.whiteEdge;
   ctx.beginPath(); ctx.arc(cx, cy + 1, 8, 0, Math.PI * 2); ctx.fill();
