@@ -11,7 +11,7 @@ const AISLE_X = 44;
 const AISLE_Y = 40;
 const WALL = 14;
 const TOP_WALL = 22;
-const ZONE_H = 96;
+const ZONE_H = 124;                // 방 깊이(캐릭터가 방 안 깊숙이 서도록)
 const CORRIDOR_H = 26;
 
 // 애플 스타일 팔레트 (화이트 · 라이트오크 · 알루미늄 · 소프트 그레이)
@@ -1163,17 +1163,17 @@ function roomAt(x, y) {
   for (const r of rooms) if (x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h) return r;
   return null;
 }
-// 도착지: 가구 바로 앞(방 하단 개방 공간) — 아래에서 곧장 걸어 올라가 닿음
+// 도착지: 가구 "바로 앞"(아래에서 곧장 걸어 올라가 가구에 붙어 섬) — 방 깊숙이
 function roomPOIs(r) {
   if (r.type === 'break') return [
-    { x: r.x + r.w / 2, y: r.y + 70 },          // 중앙(테이블/소파 앞)
-    { x: r.x + 40, y: r.y + 74 },               // 좌측(암체어 앞)
-    { x: r.x + r.w - 40, y: r.y + 72 },         // 우측(소파 앞)
+    { x: r.x + 24, y: r.y + 56 },               // 좌측 소파 앞
+    { x: r.x + r.w - 26, y: r.y + 56 },         // 우측 소파 앞
+    { x: r.x + r.w / 2, y: r.y + 62 },          // 중앙 커피테이블 앞
   ];
   return [
-    { x: r.x + r.w / 2, y: r.y + 74 },          // 중앙
-    { x: r.x + r.w - 30, y: r.y + 66 },         // 냉장고/자판기 앞
-    { x: r.x + 40, y: r.y + 74 },               // 스낵선반 앞
+    { x: r.x + r.w - 26, y: r.y + 72 },         // 냉장고 앞
+    { x: r.x + 22, y: r.y + 72 },               // 스낵선반 앞
+    { x: r.x + r.w / 2 + 12, y: r.y + 76 },     // 원형테이블 앞
   ];
 }
 
@@ -1242,7 +1242,7 @@ function ensureWalker(s, hx, hy, facing) {
   let w = walkers.get(s.id);
   if (!w) {
     w = { x: hx, y: hy, mode: 'sit', timer: 6000 + Math.random() * 18000,
-          facing, walkF: 0, stuck: 0, path: null, roomRef: null };
+          facing, walkF: 0, stuck: 0, path: null, roomRef: null, sid: s.id };
     walkers.set(s.id, w);
   }
   w.hx = hx; w.hy = hy;
@@ -1299,6 +1299,7 @@ function moveAlong(w, dt) {
 function startBack(w) {
   w.path = pathFind(w.x, w.y, w.hx, w.hy) || [{ x: w.hx, y: w.hy }];
   w.mode = 'back'; w.stuck = 0;
+  if (w.sid) speeches.delete(w.sid);   // 방 대사 버블이 복귀 중 잔류하지 않도록
 }
 function tickWalker(w, eff, dt) {
   const eligible = eff !== 'working';   // 작업중이면 자리 지킴
@@ -1328,7 +1329,7 @@ function tickWalker(w, eff, dt) {
     }
   } else if (w.mode === 'out') {
     if (!eligible) startBack(w);
-    else if (moveAlong(w, dt)) { w.mode = 'loiter'; w.timer = 2800 + Math.random() * 4200; }
+    else if (moveAlong(w, dt)) { w.mode = 'loiter'; w.timer = 5200 + Math.random() * 6000; }
   } else if (w.mode === 'loiter') {
     w.timer -= dt;
     if (!eligible || w.timer <= 0) startBack(w);
