@@ -59,6 +59,50 @@ function transcriptMtimeFor(sid, projectDirs) {
   return 0;
 }
 
+// 트랜스크립트에서 "사용자가 마지막에 보낸 요청" 추출 (AI 응답/도구결과 제외)
+// mtime 으로 캐시 → 변경 시에만 재파싱
+const promptCache = new Map();            // path → { mtime, prompt }
+function lastUserPrompt(p, mtime) {
+  if (!p) return '';
+  const cached = promptCache.get(p);
+  if (cached && cached.mtime === mtime) return cached.prompt;
+  let prompt = '';
+  try {
+    const lines = fs.readFileSync(p, 'utf8').split('\n');
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const line = lines[i].trim();
+      if (!line || line[0] !== '{') continue;
+      let ev;
+      try { ev = JSON.parse(line); } catch (e) { continue; }
+      if (ev.type !== 'user' || ev.isMeta || ev.isSidechain) continue;
+      const msg = ev.message;
+      if (!msg) continue;
+      let text = '';
+      if (typeof msg.content === 'string') text = msg.content;
+      else if (Array.isArray(msg.content)) {
+        const tp = msg.content.find((b) => b && b.type === 'text');
+        if (!tp) continue;                 // tool_result 전용 → 사람 요청 아님
+        text = tp.text || '';
+      }
+      text = (text || '').trim();
+      if (!text) continue;
+      // 시스템 주입 메시지 스킵 → 실제 사람 요청만 탐색
+      //  <task-notification> <bash-stdout> <command-…> <system-reminder> <local-command> 등 < 로 시작하는 래퍼,
+      //  API Error / Caveat / 이미지 첨부 표식
+      if (text[0] === '<' || text.startsWith('API Error') ||
+          text.startsWith('Caveat:') || text.startsWith('[Image #') ||
+          text.startsWith('[Request interrupted') ||
+          text.startsWith('This session is being continued')) continue;
+      prompt = text.replace(/\[Image #\d+\]/g, ' ').replace(/\s+/g, ' ').trim();
+      if (!prompt) continue;
+      break;
+    }
+  } catch (e) { prompt = ''; }
+  if (prompt.length > 280) prompt = prompt.slice(0, 280) + '…';
+  promptCache.set(p, { mtime, prompt });
+  return prompt;
+}
+
 function readJobs() {
   let dirs = [];
   try {
@@ -84,11 +128,13 @@ function readJobs() {
 
     const cwd = st.cwd || st.originCwd || '';
     // sessionId + resumeSessionId 둘 다 확인 → 가장 최근 트랜스크립트 채택
-    const transcriptMtime = Math.max(
-      transcriptMtimeFor(st.sessionId, projectDirs),
-      st.resumeSessionId && st.resumeSessionId !== st.sessionId
-        ? transcriptMtimeFor(st.resumeSessionId, projectDirs) : 0
-    );
+    const mtA = transcriptMtimeFor(st.sessionId, projectDirs);
+    const mtB = st.resumeSessionId && st.resumeSessionId !== st.sessionId
+      ? transcriptMtimeFor(st.resumeSessionId, projectDirs) : 0;
+    const transcriptMtime = Math.max(mtA, mtB);
+    const bestSid = mtB > mtA ? st.resumeSessionId : st.sessionId;
+    const bestPath = (sidPathCache.get(bestSid) || {}).path;
+    const lastPrompt = lastUserPrompt(bestPath, transcriptMtime);
     let stateMtime = 0;
     try { stateMtime = fs.statSync(stPath).mtimeMs; } catch (e) { /* noop */ }
 
@@ -118,6 +164,7 @@ function readJobs() {
       state: rawState,
       effective,
       detail: st.detail ? String(st.detail) : '',
+      lastPrompt,
       tempo: st.tempo || '',
       project: cwd ? path.basename(cwd) : '',
       cwd,

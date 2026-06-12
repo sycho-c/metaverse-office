@@ -104,6 +104,12 @@
   .badge.stalled { background: rgba(255,82,82,.18); color: var(--stalled); }
   .badge.unknown { background: rgba(154,160,166,.15); color: var(--unknown); }
   .item .detail { font-size: 11px; color: var(--dim); margin-top: 6px; line-height: 1.5; max-height: 50px; overflow: hidden; }
+  .item .lastreq {
+    font-size: 11px; color: #cfd6e6; margin-top: 6px; line-height: 1.45;
+    background: rgba(77,163,255,.08); border-left: 2px solid rgba(77,163,255,.5);
+    border-radius: 4px; padding: 4px 7px;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  }
   .item .meta { font-size: 10px; color: #6b7280; margin-top: 6px; display: flex; gap: 10px; }
 
   #toasts { position: fixed; right: 350px; top: 64px; z-index: 50; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
