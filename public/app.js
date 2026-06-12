@@ -235,7 +235,7 @@ function renderPanel() {
   for (const s of sorted) {
     const m = STATE_META[s.effective] || STATE_META.unknown;
     const li = document.createElement('li');
-    li.className = 'item' + (s.id === highlightId ? ' hl' : '');
+    li.className = 'item ' + s.effective + (s.id === highlightId ? ' hl' : '');
     li.innerHTML = `
       <div class="row1">
         <span class="dot ${s.effective}" style="background:${m.color}"></span>
