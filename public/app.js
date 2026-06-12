@@ -618,8 +618,57 @@ function drawWaterCooler(x, y) {
   ctx.fillRect(x + 2, y + 10, 3, 1);
 }
 
-// ---------- 휴게실 / 탕비실 ----------
-// 개방형 방: 위·좌·우 3면 벽, 아래(정면)는 열어 둠 → 좁은 문 없이 진입(벽 뚫기 방지)
+// ---------- 신규 테마 오브젝트 (AI Lab / Collaboration / Cafe) ----------
+function drawMonitorWall(x, y, w, t) {            // AI Lab: 벽면 대형 대시보드 월
+  const n = Math.max(2, Math.floor((w - 8) / 24));
+  const hues = ['#22C55E', '#3B82F6', '#F59E0B', '#6366F1'];
+  for (let i = 0; i < n; i++) {
+    const mx = x + 4 + i * 24;
+    ctx.fillStyle = C.outline; ctx.fillRect(mx, y, 22, 15);
+    ctx.fillStyle = C.screenBezel; ctx.fillRect(mx + 1, y + 1, 20, 13);
+    ctx.fillStyle = hues[i % 4];
+    for (let b = 0; b < 4; b++) {
+      const bh = 2 + ((i * 7 + b * 5 + Math.floor(t / 380)) % 9);
+      ctx.fillRect(mx + 3 + b * 4, y + 12 - bh, 2, bh);
+    }
+  }
+}
+function drawServerRack(x, y, t) {                // AI Lab: GPU 서버랙
+  shadow(x + 8, y + 31, 18, 4);
+  ctx.fillStyle = '#23252b'; ctx.fillRect(x, y, 16, 31);
+  ctx.fillStyle = '#33363d'; ctx.fillRect(x + 1, y + 1, 14, 29);
+  for (let u = 0; u < 6; u++) {
+    const uy = y + 3 + u * 4;
+    ctx.fillStyle = '#15171b'; ctx.fillRect(x + 2, uy, 12, 3);
+    ctx.fillStyle = ((Math.floor(t / 300) + u) % 2) ? '#22C55E' : '#15632f';
+    ctx.fillRect(x + 11, uy + 1, 1, 1);
+    ctx.fillStyle = (u % 2) ? '#3B82F6' : '#F59E0B';
+    ctx.fillRect(x + 3, uy + 1, 1, 1);
+  }
+}
+function drawWhiteboard(x, y, w) {                // Collaboration: 화이트보드
+  shadow(x + w / 2, y + 18, w, 3);
+  ctx.fillStyle = C.aluDark; ctx.fillRect(x, y, w, 17);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(x + 1, y + 1, w - 2, 14);
+  ctx.fillStyle = '#3B82F6'; ctx.fillRect(x + 3, y + 3, w - 14, 1);
+  ctx.fillStyle = '#EF4444'; ctx.fillRect(x + 3, y + 6, Math.round((w - 8) * 0.5), 1);
+  ctx.fillStyle = '#22C55E'; ctx.fillRect(x + 3, y + 9, Math.round((w - 8) * 0.7), 1);
+  ctx.fillStyle = '#FDE68A'; ctx.fillRect(x + w - 8, y + 3, 4, 4);   // 포스트잇
+  ctx.fillStyle = '#BFDBFE'; ctx.fillRect(x + w - 8, y + 8, 4, 4);
+  ctx.fillStyle = C.aluDark; ctx.fillRect(x + 2, y + 17, 2, 4); ctx.fillRect(x + w - 4, y + 17, 2, 4);
+}
+function drawCoffeeMachine(x, y, t) {             // Cafe: 에스프레소 머신
+  shadow(x + 6, y + 16, 13, 3);
+  ctx.fillStyle = '#3a3d44'; ctx.fillRect(x, y, 12, 15);
+  ctx.fillStyle = '#4a4d55'; ctx.fillRect(x + 1, y + 1, 10, 5);
+  ctx.fillStyle = '#22C55E'; ctx.fillRect(x + 2, y + 2, 2, 1);
+  ctx.fillStyle = '#1d1f24'; ctx.fillRect(x + 3, y + 8, 6, 4);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(x + 4, y + 12, 4, 3);
+  if (Math.floor(t / 500) % 2) { ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.fillRect(x + 5, y + 9, 1, 2); }
+}
+
+// ---------- 존(zone) 공간 ----------
+// 개방형 존: 위·좌·우 3면 벽, 아래(정면)는 열어 둠 → 좁은 문 없이 진입(벽 뚫기 방지)
 function roomShell(x, y, w, h, floorFn) {
   floorFn(x, y, w, h);
   ctx.fillStyle = C.roomEdge;
@@ -627,44 +676,44 @@ function roomShell(x, y, w, h, floorFn) {
   ctx.fillRect(x, y, 3, h);                  // 좌
   ctx.fillRect(x + w - 3, y, 3, h);          // 우
 }
-
-function drawBreakRoom(x, y, w, h, t) {
-  roomShell(x, y, w, h, (rx, ry, rw, rh) => {
-    // 라이트 오크 우드 플로어 (애플 라운지)
-    for (let py = ry, r = 0; py < ry + rh; py += 6, r++) {
-      ctx.fillStyle = r % 2 ? C.roomWood : C.roomWoodAlt;
-      ctx.fillRect(rx, py, rw, Math.min(6, ry + rh - py));
-      ctx.fillStyle = C.roomWoodSeam;
-      ctx.fillRect(rx, py, rw, 1);
-      const off = (r * 31) % 48;
-      for (let px2 = rx + off; px2 < rx + rw; px2 += 48) ctx.fillRect(px2, py, 1, 5);
-    }
-  });
-  drawTV(x + w / 2 - 11, y + 4, t);
-  drawSofa(x + 8, y + 26, 28);
-  drawSofa(x + w - 40, y + 26, 28);
-  drawCoffeeTable(x + w / 2 - 7, y + 36);
-  drawArmchair(x + 8, y + 50);
-  drawPlant(x + w - 16, y + 50, true);
-  drawPlant(x + w - 14, y + 6, false);
+// 존별 단색 바닥(+옅은 seam)
+function zoneFloor(color) {
+  return (rx, ry, rw, rh) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(rx, ry, rw, rh);
+    ctx.fillStyle = 'rgba(30,40,60,.035)';
+    for (let yy = ry + 12; yy < ry + rh; yy += 16) ctx.fillRect(rx, yy, rw, 1);
+  };
 }
-
-function drawPantry(x, y, w, h, t) {
-  roomShell(x, y, w, h, (rx, ry, rw, rh) => {
-    for (let ty = ry, r = 0; ty < ry + rh; ty += 8, r++) {
-      for (let tx = rx, c2 = 0; tx < rx + rw; tx += 8, c2++) {
-        ctx.fillStyle = (r + c2) % 2 ? C.roomB : C.roomBalt;
-        ctx.fillRect(tx, ty, Math.min(8, rx + rw - tx), Math.min(8, ry + rh - ty));
-      }
-    }
-  });
-  drawCounter(x + 6, y + 10, Math.min(w - 60, 80), t);
-  drawFridge(x + w - 46, y + 4);
-  drawVending(x + w - 26, y + 4, t);
-  drawSnackShelf(x + 6, y + 34);
-  drawRoundTable(x + w / 2 + 6, y + 48);
-  drawWaterCooler(x + w - 18, y + 40);
-  drawPlant(x + 30, y + 52, false);
+// 존 타입별 가구 렌더 (cafe / ailab / collab)
+function drawZone(z, t) {
+  const { x, y, w, h } = z;
+  roomShell(x, y, w, h, zoneFloor(z.floor));
+  const cx = x + w / 2;
+  if (z.type === 'ailab') {
+    drawMonitorWall(x + 4, y + 5, w - 8, t);            // 상단 대시보드 월
+    drawServerRack(x + 8, y + 30, t);                   // 좌측 서버랙
+    drawServerRack(x + w - 24, y + 30, t);              // 우측 서버랙
+    drawPlant(x + w / 2 - 6, y + 40, false);
+  } else if (z.type === 'collab') {
+    drawWhiteboard(x + 8, y + 6, w - 16);               // 상단 화이트보드
+    drawRoundTable(cx, y + 56);                         // 회의 테이블
+    drawRoundTable(cx, y + 56);
+    drawPlant(x + 8, y + h - 26, true);
+    drawPlant(x + w - 14, y + h - 24, false);
+  } else { // cafe — 가구는 상단(y<60)에 모으고 하단은 개방(아래에서 진입)
+    drawTV(x + 10, y + 5, t);
+    drawVending(x + w - 40, y + 5, t);                  // 스낵 자판기
+    drawCoffeeMachine(x + w - 20, y + 6, t);            // 커피머신
+    drawSofa(x + 6, y + 26, 30);                        // 라운지 소파 2(가로 배치)
+    drawSofa(x + 40, y + 26, 30);
+    drawCoffeeTable(x + 26, y + 44);
+    drawSnackShelf(x + w - 22, y + 40);
+    drawRoundTable(cx, y + 52);
+    drawPlant(x + 10, y + h - 24, true);
+    drawPlant(x + w - 14, y + h - 22, false);
+    drawWaterCooler(x + w - 16, y + h - 30);
+  }
 }
 
 // ---------- 복도 데코 ----------
@@ -1156,21 +1205,25 @@ function collectObstacles(layout) {
   for (const e of layout.emptySlots) {
     obstacles.push({ x: e.x + POD_W / 2 - 22, y: e.y + 26, w: 44, h: 28 });
   }
-  // 방: 위·좌·우 벽(두껍게, 아래는 열림) + 내부 가구(상단부) — 하단은 보행 공간
+  // 존: 위·좌·우 벽(두껍게, 아래는 열림) + 내부 가구(상단부) — 하단은 보행 공간
   const WT = 4;
   for (const r of rooms) {
+    const cx = r.x + r.w / 2;
     obstacles.push({ x: r.x, y: r.y, w: r.w, h: WT });                   // 위
     obstacles.push({ x: r.x, y: r.y, w: WT, h: r.h });                   // 좌
-    obstacles.push({ x: r.x + r.w - WT, y: r.y, w: WT, h: r.h });        // 우(가운데 공유 벽 포함)
-    if (r.type === 'break') {
-      obstacles.push({ x: r.x + 6, y: r.y + 24, w: 32, h: 20 });         // 소파L
-      obstacles.push({ x: r.x + r.w - 42, y: r.y + 24, w: 34, h: 20 });  // 소파R
-      obstacles.push({ x: r.x + r.w / 2 - 10, y: r.y + 34, w: 20, h: 12 });// 테이블
-    } else {
-      obstacles.push({ x: r.x + 4, y: r.y + 8, w: Math.min(r.w - 60, 84), h: 16 }); // 카운터
-      obstacles.push({ x: r.x + r.w - 52, y: r.y + 2, w: 48, h: 32 });   // 냉장고/자판기
-      obstacles.push({ x: r.x + 4, y: r.y + 34, w: 24, h: 24 });         // 스낵선반
-      obstacles.push({ x: r.x + r.w / 2 + 2, y: r.y + 44, w: 20, h: 16 });// 원형테이블
+    obstacles.push({ x: r.x + r.w - WT, y: r.y, w: WT, h: r.h });        // 우(공유 벽 포함)
+    if (r.type === 'ailab') {
+      obstacles.push({ x: r.x + 8, y: r.y + 30, w: 16, h: 31 });         // 서버랙L
+      obstacles.push({ x: r.x + r.w - 24, y: r.y + 30, w: 16, h: 31 });  // 서버랙R
+    } else if (r.type === 'collab') {
+      obstacles.push({ x: cx - 11, y: r.y + 48, w: 22, h: 18 });         // 회의 테이블
+    } else { // cafe — 가구 상단 클러스터(y<60), 하단 개방
+      obstacles.push({ x: r.x + 6, y: r.y + 26, w: 30, h: 14 });         // 소파L
+      obstacles.push({ x: r.x + 40, y: r.y + 26, w: 30, h: 14 });        // 소파R
+      obstacles.push({ x: r.x + 24, y: r.y + 44, w: 16, h: 9 });         // 커피테이블
+      obstacles.push({ x: r.x + r.w - 42, y: r.y + 4, w: 38, h: 34 });   // 자판기+커피머신
+      obstacles.push({ x: r.x + r.w - 22, y: r.y + 40, w: 18, h: 16 });  // 스낵선반
+      obstacles.push({ x: cx - 9, y: r.y + 46, w: 18, h: 14 });          // 원형테이블
     }
   }
 }
@@ -1187,28 +1240,32 @@ function roomAt(x, y) {
   for (const r of rooms) if (x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h) return r;
   return null;
 }
-// 도착지: 가구 "바로 앞"(아래에서 곧장 걸어 올라가 가구에 붙어 섬) — 방 깊숙이
+// 도착지: 가구 "바로 앞"(아래에서 곧장 걸어 올라가 가구에 붙어 섬) — 존 깊숙이
+// kind: coffee/sofa/rest/work/talk — 상태별 행동 선택에 사용
 function roomPOIs(r) {
   const cx = r.x + r.w / 2;
-  if (r.type === 'break') return [
-    { x: r.x + 24, y: r.y + 56 },               // 좌 소파 바로 앞(깊음)
-    { x: r.x + r.w - 26, y: r.y + 56 },         // 우 소파 바로 앞(깊음)
-    { x: cx, y: r.y + 60 },                     // 커피테이블 앞
-    { x: r.x + Math.round(r.w * 0.32), y: r.y + 70 }, // 좌측 가운데
-    { x: r.x + Math.round(r.w * 0.68), y: r.y + 70 }, // 우측 가운데
-    { x: cx - 26, y: r.y + 98 },                // 중하단 라운지
-    { x: r.x + 46, y: r.y + 104 },              // 좌하단
-    { x: r.x + r.w - 50, y: r.y + 100 },        // 우하단
+  if (r.type === 'ailab') return [
+    { x: r.x + 24, y: r.y + 74, kind: 'work' },   // 좌 서버랙 앞
+    { x: r.x + r.w - 22, y: r.y + 74, kind: 'work' }, // 우 서버랙 앞
+    { x: cx, y: r.y + 88, kind: 'work' },         // 대시보드 앞(서서 보기)
+    { x: cx - 18, y: r.y + 104, kind: 'work' },
+    { x: cx + 20, y: r.y + 100, kind: 'work' },
   ];
-  return [
-    { x: r.x + r.w - 30, y: r.y + 46 },         // 냉장고 바로 앞(깊음)
-    { x: r.x + 46, y: r.y + 42 },               // 카운터 앞(깊음)
-    { x: r.x + 22, y: r.y + 70 },               // 스낵선반 앞
-    { x: cx + 14, y: r.y + 74 },                // 원형테이블 앞
-    { x: r.x + Math.round(r.w * 0.36), y: r.y + 62 }, // 중앙 깊은 곳
-    { x: cx - 14, y: r.y + 100 },               // 중하단
-    { x: r.x + 50, y: r.y + 104 },              // 좌하단
-    { x: r.x + r.w - 52, y: r.y + 98 },         // 우하단
+  if (r.type === 'collab') return [
+    { x: cx, y: r.y + 84, kind: 'talk' },         // 회의 테이블 앞
+    { x: cx - 22, y: r.y + 92, kind: 'talk' },
+    { x: cx + 22, y: r.y + 90, kind: 'talk' },
+    { x: r.x + 20, y: r.y + 104, kind: 'talk' },
+    { x: r.x + r.w - 22, y: r.y + 102, kind: 'talk' },
+  ];
+  return [ // cafe — 가구는 상단, POI는 하단 개방부(아래에서 직진 진입)
+    { x: r.x + 20, y: r.y + 66, kind: 'sofa' },   // 좌 소파 앞(완료=쉼)
+    { x: r.x + 54, y: r.y + 66, kind: 'sofa' },   // 우 소파 앞
+    { x: r.x + r.w - 26, y: r.y + 66, kind: 'coffee' }, // 커피머신/자판기 앞(입력대기)
+    { x: r.x + r.w - 14, y: r.y + 72, kind: 'coffee' }, // 스낵선반 앞
+    { x: cx, y: r.y + 84, kind: 'rest' },         // 원형테이블 앞
+    { x: cx - 20, y: r.y + 104, kind: 'rest' },   // 라운지 중하단
+    { x: r.x + 40, y: r.y + 104, kind: 'rest' },
   ];
 }
 
@@ -1343,9 +1400,21 @@ function tickWalker(w, eff, dt) {
     if (w.timer <= 0) {
       let started = false;
       if (eligible && activeWalkerCount() < maxWalkers && Math.random() < 0.6) {
-        if (rooms.length && Math.random() < 0.55) {    // 휴게실/탕비실 방문
-          const r = rooms[Math.floor(Math.random() * rooms.length)];
-          const pois = roomPOIs(r).filter((p) => !blocked(p.x, p.y));
+        if (rooms.length && Math.random() < 0.7) {     // 존 방문(상태별 목적지 편향)
+          // 입력대기→커피머신, 완료→소파, 멈춤→휴식(cafe). 그 외/잔여는 랜덤 존(AI Lab/Collab 포함)
+          const cafe = rooms.find((z) => z.type === 'cafe');
+          let r, prefKind = null;
+          if (cafe && (eff === 'blocked' || eff === 'done' || eff === 'stalled') && Math.random() < 0.7) {
+            r = cafe;
+            prefKind = eff === 'blocked' ? 'coffee' : eff === 'done' ? 'sofa' : 'rest';
+          } else {
+            r = rooms[Math.floor(Math.random() * rooms.length)];
+          }
+          let pois = roomPOIs(r).filter((p) => !blocked(p.x, p.y));
+          if (prefKind) {
+            const pref = pois.filter((p) => p.kind === prefKind);
+            if (pref.length && Math.random() < 0.75) pois = pref;
+          }
           if (pois.length) {
             const poi = pois[Math.floor(Math.random() * pois.length)];
             const jx = Math.random() * 10 - 5, jy = Math.random() * 8 - 4;   // 같은 지점 겹침 방지
@@ -1734,11 +1803,13 @@ function frame(t) {
   const vis = visible();
   const layout = computeLayout(vis.length);
   floorW = layout.W; floorH = layout.H;
-  // 방 기하 — 상단 전체 폭을 두 방이 벽에 밀착해 차지(여백 없음, 가운데 공유 벽)
-  const mid = Math.round(layout.W / 2);
+  // 존 기하 — 상단을 3개 존(AI Lab / Collaboration / Cafe·Break)이 밀착해 차지
+  const innerW = layout.W - WALL * 2;
+  const zAi = Math.round(innerW * 0.30), zCo = Math.round(innerW * 0.30);
   rooms = [
-    { type: 'break', x: WALL, y: TOP_WALL, w: mid - WALL, h: ZONE_H },
-    { type: 'pantry', x: mid, y: TOP_WALL, w: layout.W - WALL - mid, h: ZONE_H },
+    { type: 'ailab',  label: 'AI Lab',        floor: '#F1EAFC', x: WALL,            y: TOP_WALL, w: zAi, h: ZONE_H },
+    { type: 'collab', label: 'Collaboration', floor: '#FBF1E2', x: WALL + zAi,      y: TOP_WALL, w: zCo, h: ZONE_H },
+    { type: 'cafe',   label: 'Cafe · Break',  floor: '#E7F3E7', x: WALL + zAi + zCo, y: TOP_WALL, w: layout.W - WALL - (WALL + zAi + zCo), h: ZONE_H },
   ];
   seatMap = buildSeatMap(vis, layout.pods);   // 1~4명 다양한 좌석 배정
   collectObstacles(layout);
@@ -1754,11 +1825,20 @@ function frame(t) {
   drawFloor(layout.W, layout.H);
   drawWalls(layout.W, layout.H);
 
+  // Development Zone 바닥(작업 영역) — 상단 존 아래 전체
+  ctx.setTransform(S, 0, 0, S, 0, 0);
+  const devTop = TOP_WALL + ZONE_H + 2;
+  ctx.fillStyle = '#ECF2FE';
+  ctx.fillRect(WALL, devTop, layout.W - WALL * 2, layout.H - devTop - WALL);
+  ctx.fillStyle = 'rgba(30,40,60,.03)';
+  for (let yy = devTop + 14; yy < layout.H - WALL; yy += 18) ctx.fillRect(WALL, yy, layout.W - WALL * 2, 1);
+
   zoneLabels = [];
-  drawBreakRoom(rooms[0].x, rooms[0].y, rooms[0].w, rooms[0].h, t);
-  zoneLabels.push({ text: '휴게실', x: rooms[0].x + 8, y: rooms[0].y + rooms[0].h - 7 });
-  drawPantry(rooms[1].x, rooms[1].y, rooms[1].w, rooms[1].h, t);
-  zoneLabels.push({ text: '탕비실 · 스낵코너', x: rooms[1].x + 8, y: rooms[1].y + rooms[1].h - 7 });
+  for (const z of rooms) {                         // 상단 3개 존
+    drawZone(z, t);
+    zoneLabels.push({ text: z.label, x: z.x + 8, y: z.y + z.h - 7 });
+  }
+  zoneLabels.push({ text: 'Development Zone', x: WALL + 10, y: devTop + 14 });
 
   drawCorridorDecor(layout);
 
