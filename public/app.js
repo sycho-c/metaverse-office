@@ -295,7 +295,9 @@ function computeLayout(n) {
   const W = Math.max(
     WALL * 2 + usedCols * POD_W + (usedCols - 1) * AISLE_X, 470);
   const workY = TOP_WALL + ZONE_H + CORRIDOR_H;
-  const H = workY + podRows * (POD_H + AISLE_Y) + 8;
+  const BOTTOM_BAND = 124;                            // 하단 Infrastructure / QA 존
+  const bottomTop = workY + podRows * (POD_H + AISLE_Y) + 6;
+  const H = bottomTop + BOTTOM_BAND;
 
   // 슬롯 셔플 (좌상단부터 채우지 않게) — 시드 고정으로 위치 안정
   const order = [...Array(slots).keys()];
@@ -324,7 +326,7 @@ function computeLayout(n) {
     if (sIdx < pods) podPos.push(pos);
     else emptySlots.push(pos);
   }
-  return { W, H, pods, podCols, podRows, podPos, emptySlots, workY };
+  return { W, H, pods, podCols, podRows, podPos, emptySlots, workY, bottomTop, bottomH: BOTTOM_BAND };
 }
 
 // ---------- 바닥/벽 ----------
@@ -633,6 +635,37 @@ function drawMonitorWall(x, y, w, t) {            // AI Lab: 벽면 대형 대�
     }
   }
 }
+function drawAILabWall(x, y, w, t) {              // AI Lab: Claude/GPT/Gemini 대시보드 월
+  const brands = [['Claude', '#D97757'], ['GPT', '#10A37F'], ['Gemini', '#4285F4']];
+  const pw = Math.floor((w - 6) / 3);
+  ctx.textAlign = 'center';
+  for (let i = 0; i < 3; i++) {
+    const bx = x + 3 + i * pw;
+    ctx.fillStyle = C.outline; ctx.fillRect(bx, y, pw - 3, 17);
+    ctx.fillStyle = '#0f1115'; ctx.fillRect(bx + 1, y + 1, pw - 5, 15);
+    ctx.fillStyle = brands[i][1]; ctx.fillRect(bx + 1, y + 1, pw - 5, 3);     // 브랜드 헤더
+    ctx.fillStyle = brands[i][1];
+    for (let b = 0; b < 4; b++) { const bh = 2 + ((i * 5 + b * 4 + Math.floor(t / 360)) % 8); ctx.fillRect(bx + 3 + b * 3, y + 14 - bh, 2, bh); }
+    ctx.fillStyle = '#cbd3e2'; ctx.font = '4.6px Pretendard, sans-serif';
+    ctx.fillText(brands[i][0], bx + (pw - 3) / 2, y + 22.5);
+  }
+  ctx.textAlign = 'left';
+}
+function drawTokenBar(x, y, w, t) {               // AI Lab: Token Usage
+  ctx.fillStyle = '#9aa3b5'; ctx.font = '4.4px Pretendard, sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('Token', x, y + 3);
+  const bx = x + 20, bw = w - 24;
+  ctx.fillStyle = '#1b1d22'; ctx.fillRect(bx, y - 2, bw, 5);
+  const p = 0.4 + 0.28 * Math.abs(Math.sin(t / 2200));
+  ctx.fillStyle = '#F59E0B'; ctx.fillRect(bx + 1, y - 1, (bw - 2) * p, 3);
+}
+function drawAgentHealth(x, y, t) {               // AI Lab: Agent Health 모니터
+  for (let i = 0; i < 6; i++) {
+    const ok = (hash('ah' + i) + Math.floor(t / 1500)) % 6 !== 0;
+    ctx.fillStyle = ok ? '#22C55E' : '#EF4444';
+    ctx.fillRect(x + (i % 3) * 5, y + Math.floor(i / 3) * 5, 3, 3);
+  }
+}
 function drawServerRack(x, y, t) {                // AI Lab: GPU 서버랙
   shadow(x + 8, y + 31, 18, 4);
   ctx.fillStyle = '#23252b'; ctx.fillRect(x, y, 16, 31);
@@ -667,6 +700,80 @@ function drawCoffeeMachine(x, y, t) {             // Cafe: 에스프레소 머�
   if (Math.floor(t / 500) % 2) { ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.fillRect(x + 5, y + 9, 1, 2); }
 }
 
+function drawFocusBooth(x, y) {                   // Focus Booth: 1인 방음 부스
+  shadow(x + 11, y + 27, 22, 4);
+  ctx.fillStyle = '#c2cad8'; ctx.fillRect(x, y, 22, 27);
+  ctx.fillStyle = '#e3e9f1'; ctx.fillRect(x + 1, y + 1, 20, 25);
+  ctx.fillStyle = '#aab4c4'; ctx.fillRect(x + 1, y + 1, 20, 2);
+  ctx.fillStyle = '#8cc6e8'; ctx.fillRect(x + 4, y + 4, 14, 10);     // 방음 유리
+  ctx.fillStyle = '#bde0f4'; ctx.fillRect(x + 4, y + 4, 6, 5);
+  ctx.fillStyle = '#3B82F6'; ctx.fillRect(x + 5, y + 8, 5, 3);       // 작은 스크린
+  ctx.fillStyle = C.aluDark; ctx.fillRect(x + 7, y + 23, 8, 4);
+}
+function drawPrinter(x, y) {                      // 프린터
+  shadow(x + 7, y + 13, 15, 3);
+  ctx.fillStyle = '#dfe3ea'; ctx.fillRect(x, y, 14, 12);
+  ctx.fillStyle = '#f1f3f6'; ctx.fillRect(x + 1, y + 1, 12, 5);
+  ctx.fillStyle = C.aluDark; ctx.fillRect(x + 2, y + 7, 10, 2);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(x + 3, y + 8, 8, 3);
+  ctx.fillStyle = '#22C55E'; ctx.fillRect(x + 11, y + 2, 1, 1);
+}
+function drawLocker(x, y) {                       // 락커
+  shadow(x + 9, y + 30, 18, 3);
+  ctx.fillStyle = '#aeb8c6'; ctx.fillRect(x, y, 18, 30);
+  for (let i = 0; i < 3; i++) {
+    ctx.fillStyle = i % 2 ? '#bcc4d0' : '#c6cdd9'; ctx.fillRect(x + 1, y + 1 + i * 10, 16, 9);
+    ctx.fillStyle = '#8a93a3'; ctx.fillRect(x + 13, y + 5 + i * 10, 2, 2);
+  }
+}
+function drawPhoneBooth(x, y) {                   // 전화 부스
+  shadow(x + 8, y + 30, 16, 4);
+  ctx.fillStyle = '#3B82F6'; ctx.fillRect(x, y, 16, 30);
+  ctx.fillStyle = '#5b9bf8'; ctx.fillRect(x + 1, y + 1, 14, 2);
+  ctx.fillStyle = '#bde0f4'; ctx.fillRect(x + 2, y + 4, 12, 18);
+  ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.fillRect(x + 3, y + 5, 4, 14);
+  ctx.fillStyle = '#1D4ED8'; ctx.fillRect(x + 2, y + 24, 12, 6);
+}
+function drawDeviceStand(x, y, kind) {            // QA: 테스트 디바이스(폰/태블릿/안드로이드)
+  shadow(x + 5, y + 17, 11, 3);
+  ctx.fillStyle = C.aluDark; ctx.fillRect(x + 4, y + 11, 3, 6);
+  ctx.fillRect(x + 1, y + 16, 9, 2);
+  const w = kind === 'tablet' ? 9 : 6, h = kind === 'tablet' ? 7 : 10;
+  const dx = Math.round(x + 5 - w / 2), dy = y - 2;
+  ctx.fillStyle = C.outline; ctx.fillRect(dx - 1, dy - 1, w + 2, h + 2);
+  ctx.fillStyle = kind === 'android' ? '#0f6b3a' : '#1d1f24'; ctx.fillRect(dx, dy, w, h);
+  ctx.fillStyle = kind === 'android' ? '#22C55E' : '#3B82F6'; ctx.fillRect(dx + 1, dy + 1, w - 2, h - 3);
+}
+function drawLogDashboard(x, y, t) {              // Infra: 로그 대시보드(스크롤 로그)
+  ctx.fillStyle = C.outline; ctx.fillRect(x - 1, y - 1, 30, 20);
+  ctx.fillStyle = '#0f1115'; ctx.fillRect(x, y, 28, 18);
+  for (let i = 0; i < 5; i++) {
+    const w = 6 + ((i * 7 + Math.floor(t / 500)) % 18);
+    ctx.fillStyle = ['#22C55E', '#94A3B8', '#F59E0B'][(i + Math.floor(t / 700)) % 3];
+    ctx.fillRect(x + 2, y + 2 + i * 3, w, 1);
+  }
+}
+function drawIncidentBoard(x, y, t) {             // Infra: 장애 현황판
+  ctx.fillStyle = C.outline; ctx.fillRect(x - 1, y - 1, 22, 16);
+  ctx.fillStyle = '#1b1d22'; ctx.fillRect(x, y, 20, 14);
+  for (let i = 0; i < 6; i++) {
+    const ok = (hash('inc' + i) + Math.floor(t / 1200)) % 5 !== 0;
+    ctx.fillStyle = ok ? '#22C55E' : '#EF4444';
+    ctx.fillRect(x + 2 + (i % 3) * 6, y + 2 + Math.floor(i / 3) * 6, 4, 4);
+  }
+}
+function drawServerMonitor(x, y, t) {             // Infra: 서버 그래프 모니터
+  ctx.fillStyle = C.outline; ctx.fillRect(x - 1, y - 1, 24, 16);
+  ctx.fillStyle = '#0f1115'; ctx.fillRect(x, y, 22, 14);
+  ctx.strokeStyle = '#3B82F6'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 0; i < 11; i++) {
+    const yy = y + 7 + Math.round(Math.sin(i * 0.8 + t / 400) * 4);
+    if (i === 0) ctx.moveTo(x + 1 + i * 2, yy); else ctx.lineTo(x + 1 + i * 2, yy);
+  }
+  ctx.stroke();
+}
+
 // ---------- 존(zone) 공간 ----------
 // 개방형 존: 위·좌·우 3면 벽, 아래(정면)는 열어 둠 → 좁은 문 없이 진입(벽 뚫기 방지)
 function roomShell(x, y, w, h, floorFn) {
@@ -685,22 +792,42 @@ function zoneFloor(color) {
     for (let yy = ry + 12; yy < ry + rh; yy += 16) ctx.fillRect(rx, yy, rw, 1);
   };
 }
-// 존 타입별 가구 렌더 (cafe / ailab / collab)
+// 부드러운 라운드 area rug (바닥 채움 + 애플 라운지 느낌)
+function drawAreaRug(x, y, w, h, c1, c2) {
+  ctx.fillStyle = c2; roundRect(x, y, w, h, 6);
+  ctx.fillStyle = c1; roundRect(x + 2, y + 2, w - 4, h - 4, 5);
+  ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(x + 4, y + 3, w - 8, 1);
+}
+const ZONE_RUG = {
+  ailab:  ['#E7DCF6', '#EFE7FB'], collab: ['#F2E5CC', '#F8F0DE'],
+  cafe:   ['#D7E9D7', '#E3F0E3'], focus:  ['#DCE7F6', '#E8EFFB'],
+};
+// 존 타입별 가구 렌더 (cafe / ailab / collab / focus)
 function drawZone(z, t) {
   const { x, y, w, h } = z;
   roomShell(x, y, w, h, zoneFloor(z.floor));
+  const rug = ZONE_RUG[z.type];
+  if (rug) drawAreaRug(x + 5, y + 5, w - 10, h - 10, rug[0], rug[1]);   // wall-to-wall 카펫
   const cx = x + w / 2;
   if (z.type === 'ailab') {
-    drawMonitorWall(x + 4, y + 5, w - 8, t);            // 상단 대시보드 월
-    drawServerRack(x + 8, y + 30, t);                   // 좌측 서버랙
-    drawServerRack(x + w - 24, y + 30, t);              // 우측 서버랙
-    drawPlant(x + w / 2 - 6, y + 40, false);
+    drawAILabWall(x + 4, y + 5, w - 8, t);              // Claude/GPT/Gemini 대시보드
+    drawTokenBar(x + 6, y + 30, w - 44, t);             // Token Usage
+    drawAgentHealth(x + w - 32, y + 28, t);             // Agent Health
+    drawServerRack(x + 8, y + 38, t);                   // GPU 클러스터
+    drawServerRack(x + 27, y + 38, t);
+    drawServerRack(x + w - 27, y + 38, t);
+    drawPlant(x + w / 2 - 6, y + h - 22, false);
   } else if (z.type === 'collab') {
     drawWhiteboard(x + 8, y + 6, w - 16);               // 상단 화이트보드
     drawRoundTable(cx, y + 56);                         // 회의 테이블
-    drawRoundTable(cx, y + 56);
     drawPlant(x + 8, y + h - 26, true);
     drawPlant(x + w - 14, y + h - 24, false);
+  } else if (z.type === 'focus') {                      // 1인 방음 부스
+    drawFocusBooth(x + 7, y + 6);
+    drawFocusBooth(x + w - 29, y + 6);
+    drawFocusBooth(x + 7, y + 40);
+    drawFocusBooth(x + w - 29, y + 40);
+    drawPlant(cx - 6, y + h - 24, false);
   } else { // cafe — 가구는 상단(y<60)에 모으고 하단은 개방(아래에서 진입)
     drawTV(x + 10, y + 5, t);
     drawVending(x + w - 40, y + 5, t);                  // 스낵 자판기
@@ -723,20 +850,62 @@ function drawCorridorDecor(layout) {
   for (let r = 1; r <= podRows; r++) {
     const y = workY + r * (POD_H + AISLE_Y) - AISLE_Y + 6;
     const h = hash('cor' + r);
-    for (let x = WALL + 30 + (h % 40); x < W - 50; x += 210) {
-      const v = (h >>> (x % 7)) % 3;
+    for (let x = WALL + 24 + (h % 30); x < W - 46; x += 108) {   // 촘촘하게(빈 바닥↓)
+      if (blocked(x + 9, y + 8)) continue;                       // 포드와 겹치면 스킵
+      const v = (h >>> (x % 11)) % 4;
       if (v === 0) drawPlant(x, y, true);
       else if (v === 1) {
         shadow(x + 9, y + 14, 20, 3);
-        ctx.fillStyle = C.oak;                    // 오크 벤치
-        ctx.fillRect(x, y + 6, 18, 4);
-        ctx.fillStyle = C.oakHi;
-        ctx.fillRect(x, y + 6, 18, 1);
-        ctx.fillStyle = C.aluDark;
-        ctx.fillRect(x + 1, y + 10, 2, 4);
-        ctx.fillRect(x + 15, y + 10, 2, 4);
-      } else drawWaterCooler(x, y);
+        ctx.fillStyle = C.oak; ctx.fillRect(x, y + 6, 18, 4);
+        ctx.fillStyle = C.oakHi; ctx.fillRect(x, y + 6, 18, 1);
+        ctx.fillStyle = C.aluDark; ctx.fillRect(x + 1, y + 10, 2, 4); ctx.fillRect(x + 15, y + 10, 2, 4);
+      } else if (v === 2) drawWaterCooler(x, y);
+      else drawPrinter(x, y + 4);
     }
+  }
+}
+
+// 하단 Infrastructure 존: 서버 모니터/로그/장애판 + 서버랙 + 프린터
+function drawInfraZone(x, y, w, h, t) {
+  ctx.setTransform(S, 0, 0, S, 0, 0);
+  drawAreaRug(x + 6, y + 48, w - 12, h - 54, '#CFD7E4', '#DAE1EC');
+  const mw = Math.min(w - 60, 96);
+  drawMonitorWall(x + 6, y + 4, mw, t);                  // NOC 대형 모니터 월
+  drawIncidentBoard(x + mw + 12, y + 5, t);             // 장애 현황
+  drawServerMonitor(x + mw + 12, y + 24, t);            // 서버 상태 그래프
+  drawServerRack(x + 10, y + 26, t);
+  drawServerRack(x + 30, y + 26, t);
+  drawLogDashboard(x + w - 36, y + 26, t);              // 로그 스트림
+  drawPrinter(x + w - 20, y + h - 26);
+  drawPlant(x + w - 16, y + h - 22, true);
+}
+// 하단 QA 존: 테스트 디바이스(폰/태블릿/안드로이드) 진열 + 락커 + 전화부스
+function drawQAZone(x, y, w, h, t) {
+  ctx.setTransform(S, 0, 0, S, 0, 0);
+  drawAreaRug(x + 6, y + 50, w - 12, h - 56, '#D3E2CE', '#DEEAD9');
+  const bw = Math.min(w - 40, 150);
+  ctx.fillStyle = C.oak; ctx.fillRect(x + 8, y + 26, bw, 4);          // 테스트 벤치
+  ctx.fillStyle = C.aluDark; ctx.fillRect(x + 10, y + 30, 2, 4); ctx.fillRect(x + 8 + bw - 2, y + 30, 2, 4);
+  const kinds = ['android', 'phone', 'tablet', 'phone', 'android', 'tablet'];
+  const nDev = Math.min(6, Math.floor((bw - 6) / 26));
+  for (let i = 0; i < nDev; i++) drawDeviceStand(x + 16 + i * 26, y + 10, kinds[i % kinds.length]);
+  drawLocker(x + w - 24, y + 4);
+  drawPlant(x + w - 16, y + h - 22, false);
+}
+// 좌우 벽면 페리미터 데코(빈 바닥 채움) — 포드와 겹치는 곳은 스킵
+function drawPerimeterDecor(layout) {
+  ctx.setTransform(S, 0, 0, S, 0, 0);
+  const { W, workY, bottomTop } = layout;
+  const items = [
+    (x, y) => drawBookshelf(x, y),
+    (x, y) => drawLocker(x, y),
+    (x, y) => drawPhoneBooth(x + 1, y),
+    (x, y) => { drawPlant(x + 4, y + 8, true); drawPlant(x + 12, y + 16, false); },
+  ];
+  let i = 0;
+  for (let y = workY + 4; y < bottomTop - 30; y += 38) {
+    if (!blocked(WALL + 11, y + 14) && !blocked(WALL + 11, y + 26)) { items[i % items.length](WALL + 2, y); i++; }
+    if (!blocked(W - WALL - 11, y + 14) && !blocked(W - WALL - 11, y + 26)) { items[i % items.length](W - WALL - 20, y); i++; }
   }
 }
 
@@ -1213,10 +1382,16 @@ function collectObstacles(layout) {
     obstacles.push({ x: r.x, y: r.y, w: WT, h: r.h });                   // 좌
     obstacles.push({ x: r.x + r.w - WT, y: r.y, w: WT, h: r.h });        // 우(공유 벽 포함)
     if (r.type === 'ailab') {
-      obstacles.push({ x: r.x + 8, y: r.y + 30, w: 16, h: 31 });         // 서버랙L
-      obstacles.push({ x: r.x + r.w - 24, y: r.y + 30, w: 16, h: 31 });  // 서버랙R
+      obstacles.push({ x: r.x + 8, y: r.y + 38, w: 16, h: 31 });         // GPU 랙×3
+      obstacles.push({ x: r.x + 27, y: r.y + 38, w: 16, h: 31 });
+      obstacles.push({ x: r.x + r.w - 27, y: r.y + 38, w: 16, h: 31 });
     } else if (r.type === 'collab') {
       obstacles.push({ x: cx - 11, y: r.y + 48, w: 22, h: 18 });         // 회의 테이블
+    } else if (r.type === 'focus') {
+      obstacles.push({ x: r.x + 7, y: r.y + 6, w: 22, h: 27 });          // 부스 4개
+      obstacles.push({ x: r.x + r.w - 29, y: r.y + 6, w: 22, h: 27 });
+      obstacles.push({ x: r.x + 7, y: r.y + 40, w: 22, h: 27 });
+      obstacles.push({ x: r.x + r.w - 29, y: r.y + 40, w: 22, h: 27 });
     } else { // cafe — 가구 상단 클러스터(y<60), 하단 개방
       obstacles.push({ x: r.x + 6, y: r.y + 26, w: 30, h: 14 });         // 소파L
       obstacles.push({ x: r.x + 40, y: r.y + 26, w: 30, h: 14 });        // 소파R
@@ -1250,6 +1425,13 @@ function roomPOIs(r) {
     { x: cx, y: r.y + 88, kind: 'work' },         // 대시보드 앞(서서 보기)
     { x: cx - 18, y: r.y + 104, kind: 'work' },
     { x: cx + 20, y: r.y + 100, kind: 'work' },
+  ];
+  if (r.type === 'focus') return [
+    { x: r.x + 18, y: r.y + 78, kind: 'work' },   // 좌 부스 앞
+    { x: r.x + r.w - 18, y: r.y + 78, kind: 'work' }, // 우 부스 앞
+    { x: cx, y: r.y + 92, kind: 'work' },
+    { x: cx - 16, y: r.y + 106, kind: 'work' },
+    { x: cx + 18, y: r.y + 104, kind: 'work' },
   ];
   if (r.type === 'collab') return [
     { x: cx, y: r.y + 84, kind: 'talk' },         // 회의 테이블 앞
@@ -1481,6 +1663,35 @@ function drawWalkPerson(cx, topY, look, dir, t, moving) {
   drawHead(cx, topY, look, dir, 'working');
 }
 
+// ---------- 존 내 상주 캐릭터(ambient NPC) — 살아있는 오피스 ----------
+function computeAmbient() {
+  const out = [];
+  let k = 0;
+  const add = (x, y, face, act) => out.push({ x: Math.round(x), y: Math.round(y), look: lookOf('npc' + (k++)), face, act });
+  for (const z of rooms) {
+    const cx = z.x + z.w / 2;
+    if (z.type === 'ailab') { add(z.x + 20, z.y + 78, 'up', 'work'); add(z.x + z.w - 20, z.y + 80, 'up', 'work'); }
+    else if (z.type === 'collab') { add(cx - 15, z.y + 82, 'right', 'talk'); add(cx + 15, z.y + 82, 'left', 'talk'); add(cx, z.y + 100, 'up', 'talk'); }
+    else if (z.type === 'cafe') { add(z.x + 26, z.y + 70, 'up', 'rest'); add(z.x + z.w - 28, z.y + 70, 'up', 'coffee'); }
+    else if (z.type === 'focus') { add(z.x + 18, z.y + 80, 'up', 'focus'); add(z.x + z.w - 18, z.y + 82, 'up', 'focus'); }
+  }
+  return out;
+}
+function drawAmbientPerson(n, t) {
+  const look = n.act === 'focus' ? { ...n.look, headphone: true } : n.look;
+  drawWalkPerson(n.x, n.y, look, n.face, t, false);
+  if (n.act === 'coffee') {                          // 커피잔
+    ctx.fillStyle = '#fff'; ctx.fillRect(n.x + 6, n.y + 7, 3, 3);
+    ctx.fillStyle = '#9a6b3a'; ctx.fillRect(n.x + 7, n.y + 8, 1, 1);
+  }
+  if (n.act === 'talk' && Math.floor(t / 1400) % 3 !== 2) {  // 토론 말풍선
+    const bx = n.x + 6, by = n.y - 12;
+    ctx.fillStyle = '#ffffff'; roundRect(bx, by, 13, 8, 3);
+    ctx.fillStyle = '#94a3b8';
+    for (let d = 0; d < 3; d++) ctx.fillRect(bx + 2 + d * 4, by + 3, 2, 2);
+  }
+}
+
 // 보행 로직만 갱신(그리기는 깊이정렬 후 drawWalker 에서) — home 미설정 세션은 스킵
 function tickWalkers(vis) {
   const ids = new Set(vis.map((s) => s.id));
@@ -1576,6 +1787,19 @@ function drawPodAFloor(px, py, p) {
   ctx.fillRect(px + 4, py + 10, POD_W - 8, 1);
 }
 
+// blocked 상태: 손들기(도움 요청) + "!" 표시
+function drawRaiseHand(cx, topY, t) {
+  const up = Math.floor(t / 350) % 2;                 // 손 흔들기
+  ctx.fillStyle = '#e8b98a';
+  ctx.fillRect(cx + 5, topY - 3 - up, 2, 6 + up);     // 든 팔
+  ctx.fillRect(cx + 4, topY - 6 - up, 4, 3);          // 손
+  ctx.fillStyle = '#F59E0B';                          // "!" 칩
+  roundRect(cx + 8, topY - 12, 6, 7, 2);
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(cx + 10, topY - 10, 2, 2);
+  ctx.fillRect(cx + 10, topY - 7, 2, 1);
+}
+
 // 뒷줄 좌석 + 양쪽 책상/모니터 (변형 A)
 function drawPodABack(px, py, seats, t) {
   const cxs = [px + 27, px + 65];
@@ -1595,6 +1819,7 @@ function drawPodABack(px, py, seats, t) {
     shadow(cx, hy + 18, 16, 4);
     drawHead(cx, hy, look, 'down', eff);
     drawBody(cx, hy + 8, look, eff, t, 'down');
+    if (eff === 'blocked') drawRaiseHand(cx, hy, t);
     cellRects.push({ x: cx - 22, y: py + 2, w: 44, h: 42, s });
     pushTag(s, cx, py - 9 + (k ? 7 : 0), look);
   }
@@ -1650,6 +1875,7 @@ function drawPodAFront(px, py, seats, t) {
     shadow(cx, hy + 18, 16, 4);
     drawBody(cx, hy + 8, look, eff, t, 'up');
     drawHead(cx, hy, look, 'up', eff);
+    if (eff === 'blocked') drawRaiseHand(cx, hy, t);
     ctx.fillStyle = C.chairDark;
     ctx.fillRect(cx - 5, hy + 16, 10, 2);
     cellRects.push({ x: cx - 22, y: py + 52, w: 44, h: 44, s });
@@ -1683,6 +1909,7 @@ function drawPodBRow(px, py, seats, t, r) {
     shadow(cx, hy + 18, 16, 4);
     drawHead(cx, hy, look, face, eff);
     drawBody(cx, hy + 8, look, eff, t, face);
+    if (eff === 'blocked') drawRaiseHand(cx, hy, t);
     cellRects.push({ x: cx - 16, y: dy - 6, w: 34, h: 40, s });
     pushTag(s, cx, dy - 15 + (c ? 7 : 0), look);
   }
@@ -1708,21 +1935,23 @@ function drawPod(p, px, py, seats, t, band) {
 function drawEmptySlot(px, py, idx) {
   ctx.setTransform(S, 0, 0, S, 0, 0);
   const h = hash('empty' + idx);
-  const v = h % 4;
-  const cx = px + POD_W / 2, cy = py + 40;
-  if (v === 0) {
-    drawArmchair(cx - 18, cy);
-    drawCoffeeTable(cx + 2, cy + 3);
-    drawPlant(cx + 22, cy - 4, false);
-  } else if (v === 1) {
-    drawPlant(cx - 16, cy, true);
-    drawPlant(cx + 2, cy + 10, false);
-    drawPlant(cx + 14, cy - 2, false);
-  } else if (v === 2) {
-    drawBookshelf(cx - 9, cy);
-    drawPlant(cx + 14, cy + 4, false);
+  const v = h % 5;
+  const cx = px + POD_W / 2, cy = py + 34;
+  drawAreaRug(px + 10, py + 14, POD_W - 20, POD_H - 30, '#DEE5F0', '#E8EDF6'); // 라운지 러그
+  if (v === 0) {                       // 공용 라운지
+    drawSofa(cx - 26, cy - 2, 28);
+    drawCoffeeTable(cx - 6, cy + 16);
+    drawPlant(cx + 22, cy - 6, true);
+  } else if (v === 1) {                // 식물 그로브 + 암체어
+    drawPlant(cx - 18, cy, true); drawPlant(cx + 2, cy + 12, false); drawPlant(cx + 16, cy - 4, false);
+    drawArmchair(cx - 24, cy + 14);
+  } else if (v === 2) {                // 서가 + 프린터
+    drawBookshelf(cx - 12, cy - 6); drawPrinter(cx + 12, cy + 16); drawPlant(cx + 22, cy + 2, false);
+  } else if (v === 3) {                // 작은 회의(라운드테이블)
+    drawRoundTable(cx, cy + 8); drawPlant(cx - 24, cy + 12, false); drawPlant(cx + 22, cy + 12, false);
+  } else {                             // 전화부스 + 락커
+    drawPhoneBooth(cx - 20, cy - 6); drawLocker(cx + 2, cy - 6); drawPlant(cx + 24, cy + 10, false);
   }
-  // v === 3 → 빈 공간 (개방감)
 }
 
 // 좌석 단위 하이라이트
@@ -1803,13 +2032,15 @@ function frame(t) {
   const vis = visible();
   const layout = computeLayout(vis.length);
   floorW = layout.W; floorH = layout.H;
-  // 존 기하 — 상단을 3개 존(AI Lab / Collaboration / Cafe·Break)이 밀착해 차지
+  // 존 기하 — 상단을 4개 존(AI Lab / Collaboration / Cafe·Break / Focus Booth)이 밀착해 차지
   const innerW = layout.W - WALL * 2;
-  const zAi = Math.round(innerW * 0.30), zCo = Math.round(innerW * 0.30);
+  const zAi = Math.round(innerW * 0.28), zCo = Math.round(innerW * 0.22), zCa = Math.round(innerW * 0.28);
+  const zx = WALL;
   rooms = [
-    { type: 'ailab',  label: 'AI Lab',        floor: '#F1EAFC', x: WALL,            y: TOP_WALL, w: zAi, h: ZONE_H },
-    { type: 'collab', label: 'Collaboration', floor: '#FBF1E2', x: WALL + zAi,      y: TOP_WALL, w: zCo, h: ZONE_H },
-    { type: 'cafe',   label: 'Cafe · Break',  floor: '#E7F3E7', x: WALL + zAi + zCo, y: TOP_WALL, w: layout.W - WALL - (WALL + zAi + zCo), h: ZONE_H },
+    { type: 'ailab',  label: 'AI Lab',        floor: '#F5EEFF', x: zx,                 y: TOP_WALL, w: zAi, h: ZONE_H },
+    { type: 'collab', label: 'Collaboration', floor: '#FFF4E5', x: zx + zAi,           y: TOP_WALL, w: zCo, h: ZONE_H },
+    { type: 'cafe',   label: 'Cafe · Break',  floor: '#EAF5EA', x: zx + zAi + zCo,     y: TOP_WALL, w: zCa, h: ZONE_H },
+    { type: 'focus',  label: 'Focus Booth',   floor: '#EEF4FF', x: zx + zAi + zCo + zCa, y: TOP_WALL, w: layout.W - WALL - (zx + zAi + zCo + zCa), h: ZONE_H },
   ];
   seatMap = buildSeatMap(vis, layout.pods);   // 1~4명 다양한 좌석 배정
   collectObstacles(layout);
@@ -1825,22 +2056,33 @@ function frame(t) {
   drawFloor(layout.W, layout.H);
   drawWalls(layout.W, layout.H);
 
-  // Development Zone 바닥(작업 영역) — 상단 존 아래 전체
+  // Development Zone 바닥(작업 영역) — 상단 존 아래 ~ 하단 밴드 위
   ctx.setTransform(S, 0, 0, S, 0, 0);
   const devTop = TOP_WALL + ZONE_H + 2;
-  ctx.fillStyle = '#ECF2FE';
-  ctx.fillRect(WALL, devTop, layout.W - WALL * 2, layout.H - devTop - WALL);
-  ctx.fillStyle = 'rgba(30,40,60,.03)';
-  for (let yy = devTop + 14; yy < layout.H - WALL; yy += 18) ctx.fillRect(WALL, yy, layout.W - WALL * 2, 1);
+  const innerWf = layout.W - WALL * 2, midX = WALL + Math.round(innerWf / 2);
+  ctx.fillStyle = '#EEF4FF';
+  ctx.fillRect(WALL, devTop, innerWf, layout.bottomTop - devTop);
+  drawAreaRug(WALL + 2, devTop, innerWf - 4, layout.bottomTop - devTop - 2, '#D6E0F0', '#DFE8F5'); // Dev 카펫(벽까지)
+
+  // 하단 밴드: Infrastructure Zone(좌) / QA Zone(우)
+  const by = layout.bottomTop, bh = layout.bottomH - WALL;
+  ctx.fillStyle = '#EAEEF4'; ctx.fillRect(WALL, by, midX - WALL, bh);          // Infra 바닥
+  ctx.fillStyle = '#F1F6EF'; ctx.fillRect(midX, by, layout.W - WALL - midX, bh); // QA 바닥
+  ctx.fillStyle = 'rgba(120,130,150,.12)'; ctx.fillRect(midX - 1, by + 6, 2, bh - 12); // 구분선
 
   zoneLabels = [];
-  for (const z of rooms) {                         // 상단 3개 존
+  for (const z of rooms) {                         // 상단 4개 존
     drawZone(z, t);
     zoneLabels.push({ text: z.label, x: z.x + 8, y: z.y + z.h - 7 });
   }
   zoneLabels.push({ text: 'Development Zone', x: WALL + 10, y: devTop + 14 });
+  drawInfraZone(WALL, by, midX - WALL, bh, t);
+  zoneLabels.push({ text: 'Infrastructure', x: WALL + 8, y: by + bh - 6 });
+  drawQAZone(midX, by, layout.W - WALL - midX, bh, t);
+  zoneLabels.push({ text: 'QA Zone', x: midX + 8, y: by + bh - 6 });
 
   drawCorridorDecor(layout);
+  drawPerimeterDecor(layout);
 
   cellRects = [];
   tagJobs = [];
@@ -1865,6 +2107,9 @@ function frame(t) {
   for (const s of vis) {
     const w = walkers.get(s.id);
     if (w && w.mode !== 'sit') actors.push({ y: w.y + 17, draw: () => drawWalker(s, w, t) });
+  }
+  for (const n of computeAmbient()) {                // 존 상주 NPC(연구/회의/휴식/집중)
+    actors.push({ y: n.y + 17, draw: () => drawAmbientPerson(n, t) });
   }
   actors.sort((a, b) => a.y - b.y);
   for (const a of actors) a.draw();
