@@ -16,8 +16,9 @@ const CORRIDOR_H = 26;
 
 // 애플 스타일 팔레트 (화이트 · 라이트오크 · 알루미늄 · 소프트 그레이)
 const C = {
-  tile: '#f1f2f4', tileAlt: '#ebedef', grout: 'rgba(130,136,148,.07)',
-  wall: '#f4f5f7', wallShade: '#d8dade', wallDark: '#c2c6cc',
+  // 작업 영역 바닥: 블루그레이(방 따뜻한 우드/타일이 도드라지도록)
+  tile: '#bcc4d0', tileAlt: '#b4bcca', grout: 'rgba(70,82,104,.10)',
+  wall: '#cdd5e0', wallShade: '#b3bdcb', wallDark: '#9ba6b6',
   glass: '#b5dcf2', glassDeep: '#8cc6e8',
   roomWood: '#ecd9b4', roomWoodAlt: '#e6d1a6', roomWoodSeam: 'rgba(160,120,60,.18)',
   roomB: '#eff0f1', roomBalt: '#e8e9eb',
