@@ -1009,7 +1009,7 @@ function drawTags(t) {
   // 2) 겹침 회피: y 오름차순으로 배치, 가로로 겹치면 위로 밀어 쌓기
   items.sort((a, b) => a.y0 - b.y0 || a.cx - b.cx);
   const placed = [];
-  const padX = 3 * k, padY = 3 * k, minY = (TOP_WALL + ZONE_H - 6) * S;
+  const padX = 3 * k, padY = 3 * k, minY = (TOP_WALL + 2) * S;   // 상단 벽 직하까지만(방 안 캐릭터도 태그가 따라 올라감)
   for (const it of items) {
     let y = it.y0, guard = 0, moved = true;
     while (moved && guard++ < 150) {
@@ -1166,14 +1166,14 @@ function roomAt(x, y) {
 // 도착지: 가구 "바로 앞"(아래에서 곧장 걸어 올라가 가구에 붙어 섬) — 방 깊숙이
 function roomPOIs(r) {
   if (r.type === 'break') return [
-    { x: r.x + 24, y: r.y + 56 },               // 좌측 소파 앞
-    { x: r.x + r.w - 26, y: r.y + 56 },         // 우측 소파 앞
-    { x: r.x + r.w / 2, y: r.y + 62 },          // 중앙 커피테이블 앞
+    { x: r.x + 24, y: r.y + 72 },               // 좌측 소파 앞
+    { x: r.x + r.w - 26, y: r.y + 72 },         // 우측 소파 앞
+    { x: r.x + r.w / 2, y: r.y + 76 },          // 중앙 커피테이블 앞
   ];
   return [
-    { x: r.x + r.w - 26, y: r.y + 72 },         // 냉장고 앞
-    { x: r.x + 22, y: r.y + 72 },               // 스낵선반 앞
-    { x: r.x + r.w / 2 + 12, y: r.y + 76 },     // 원형테이블 앞
+    { x: r.x + r.w - 38, y: r.y + 46 },         // 냉장고 바로 앞
+    { x: r.x + 22, y: r.y + 70 },               // 스낵선반 앞
+    { x: r.x + r.w / 2 + 12, y: r.y + 72 },     // 원형테이블 앞
   ];
 }
 
@@ -1364,22 +1364,22 @@ function drawWalkPerson(cx, topY, look, dir, t, moving) {
   drawHead(cx, topY, look, dir, 'working');
 }
 
-function updateWalkers(vis, t) {
+// 보행 로직만 갱신(그리기는 깊이정렬 후 drawWalker 에서) — home 미설정 세션은 스킵
+function tickWalkers(vis) {
   const ids = new Set(vis.map((s) => s.id));
   for (const id of walkers.keys()) if (!ids.has(id)) walkers.delete(id);
   maxWalkers = Math.max(1, Math.round(vis.length / 6));
-  ctx.setTransform(S, 0, 0, S, 0, 0);
   for (const s of vis) {
     const w = walkers.get(s.id);
-    if (!w) continue;                            // home 미설정(미표시) → 스킵
-    tickWalker(w, s.effective, dtFrame);
-    if (w.mode !== 'sit') {
-      const look = lookOf(s.id);
-      drawWalkPerson(w.x, w.y, look, w.facing, t, w.mode === 'out' || w.mode === 'back');
-      cellRects.push({ x: w.x - 11, y: w.y - 5, w: 22, h: 26, s });
-      pushTag(s, w.x, w.y - 16, look);
-    }
+    if (w) tickWalker(w, s.effective, dtFrame);
   }
+}
+function drawWalker(s, w, t) {
+  ctx.setTransform(S, 0, 0, S, 0, 0);
+  const look = lookOf(s.id);
+  drawWalkPerson(w.x, w.y, look, w.facing, t, w.mode === 'out' || w.mode === 'back');
+  cellRects.push({ x: w.x - 11, y: w.y - 5, w: 22, h: 26, s });
+  pushTag(s, w.x, w.y - 16, look);
 }
 
 // ---------- 상황별 대사 말풍선 ----------
@@ -1705,11 +1705,22 @@ function frame(t) {
   for (let e = 0; e < layout.emptySlots.length; e++) {
     drawEmptySlot(layout.emptySlots[e].x, layout.emptySlots[e].y, e);
   }
-  for (let p = 0; p < layout.pods; p++) {
-    drawPod(p, layout.podPos[p].x, layout.podPos[p].y, seatMap[p] || [], t);
-  }
+  tickWalkers(vis);               // 보행 로직 갱신(그리기는 아래 깊이정렬에서)
 
-  updateWalkers(vis, t);          // 보행 캐릭터(자리 비운 세션) 업데이트+그리기
+  // 깊이정렬: 책상 클러스터와 보행 캐릭터를 "발끝 Y" 기준으로 섞어 그림
+  // → 책상 뒤(위쪽)에 있는 캐릭터는 책상에 가려지고, 앞(아래쪽)이면 책상 위로 보임(밟는 현상 제거)
+  const actors = [];
+  for (let p = 0; p < layout.pods; p++) {
+    const pos = layout.podPos[p];
+    actors.push({ y: pos.y + POD_H, draw: () => drawPod(p, pos.x, pos.y, seatMap[p] || [], t) });
+  }
+  for (const s of vis) {
+    const w = walkers.get(s.id);
+    if (w && w.mode !== 'sit') actors.push({ y: w.y + 17, draw: () => drawWalker(s, w, t) });
+  }
+  actors.sort((a, b) => a.y - b.y);
+  for (const a of actors) a.draw();
+
   tickSpeech(vis, t);             // 상황별 대사 스케줄
   drawHighlight();
   drawCat(t);
