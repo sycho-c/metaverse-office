@@ -1562,14 +1562,20 @@ function moveTo(w, tx, ty, dt) {
   return Math.hypot(tx - w.x, ty - w.y) < 1.6;
 }
 // 경유점(path) 따라 이동 — 끼이면 비켜서기 → 경로 재계산 → 경유점 스킵 순으로 빠르게 복구
+// 끼임 판단은 '경유점까지 최단거리(bestD) 갱신 여부'로 한다. 가로가 막혀 세로로만
+// 미끄러지는 제자리 진동은 새 최단거리를 만들지 못하므로 정상적으로 끼임으로 집계된다.
 function moveAlong(w, dt) {
   if (!w.path || !w.path.length) return true;
   const p = w.path[0];
   if (moveTo(w, p.x, p.y, dt)) {               // 경유점 도달 → 다음으로, 복구 상태 리셋
-    w.path.shift(); w.stuck = 0; w.repathed = false; w.side = 0;
+    w.path.shift(); w.noProg = 0; w.bestD = undefined; w.repathed = false; w.side = 0;
     return !w.path.length;
   }
-  if (w.stuck > 450) {                          // 1) 진행 방향에 수직으로 비켜서기(모서리 끼임 해소)
+  const d = Math.hypot(p.x - w.x, p.y - w.y);
+  if (w.bestD === undefined || d < w.bestD - 0.5) { w.bestD = d; w.noProg = 0; w.side = 0; }
+  else w.noProg = (w.noProg || 0) + dt;        // 더 가까워지지 못하면 끼임 누적
+
+  if (w.noProg > 350) {                          // 1) 진행 방향에 수직으로 비켜서기(모서리 끼임 해소)
     const dx = p.x - w.x, dy = p.y - w.y;
     if (!w.side) w.side = Math.random() < 0.5 ? 1 : -1;
     let nx = 0, ny = 0;
@@ -1577,20 +1583,20 @@ function moveAlong(w, dt) {
     if (!blocked(w.x + nx, w.y + ny)) { w.x += nx; w.y += ny; }
     else { w.side = -w.side; }                  // 막히면 반대쪽 시도
   }
-  if (w.stuck > 1100 && !w.repathed) {          // 2) 현재 위치 → 목적지로 경로 재계산
+  if (w.noProg > 900 && !w.repathed) {          // 2) 현재 위치 → 목적지로 경로 재계산
     const goal = w.path[w.path.length - 1];
     const np = pathFind(w.x, w.y, goal.x, goal.y);
-    if (np && np.length) { w.path = np; w.repathed = true; w.stuck = 0; w.side = 0; }
+    if (np && np.length) { w.path = np; w.repathed = true; w.noProg = 0; w.bestD = undefined; w.side = 0; }
   }
-  if (w.stuck > 2000) {                          // 3) 최후: 경유점 건너뜀
-    w.path.shift(); w.stuck = 0; w.repathed = false; w.side = 0;
+  if (w.noProg > 1700) {                         // 3) 최후: 경유점 건너뜀
+    w.path.shift(); w.noProg = 0; w.bestD = undefined; w.repathed = false; w.side = 0;
     if (!w.path.length) return true;
   }
   return false;
 }
 function startBack(w) {
   w.path = pathFind(w.x, w.y, w.hx, w.hy) || [{ x: w.hx, y: w.hy }];
-  w.mode = 'back'; w.stuck = 0;
+  w.mode = 'back'; w.stuck = 0; w.noProg = 0; w.bestD = undefined; w.repathed = false; w.side = 0;
   if (w.sid) speeches.delete(w.sid);   // 방 대사 버블이 복귀 중 잔류하지 않도록
 }
 function tickWalker(w, eff, dt) {
@@ -1624,14 +1630,14 @@ function tickWalker(w, eff, dt) {
             const poi = pois[Math.floor(Math.random() * pois.length)];
             const jx = Math.random() * 10 - 5, jy = Math.random() * 8 - 4;   // 같은 지점 겹침 방지
             const path = pathFind(w.x, w.y, poi.x + jx, poi.y + jy);
-            if (path) { w.roomRef = r; w.path = path; w.mode = 'out'; w.stuck = 0; started = true; }
+            if (path) { w.roomRef = r; w.path = path; w.mode = 'out'; w.stuck = 0; w.noProg = 0; w.bestD = undefined; started = true; }
           }
         }
         if (!started) {                                // 복도 산책
           const tgt = pickRoamTarget(w.hx, w.hy, 30);
           if (tgt) {
             const path = pathFind(w.x, w.y, tgt.x, tgt.y);
-            if (path) { w.roomRef = null; w.path = path; w.mode = 'out'; w.stuck = 0; started = true; }
+            if (path) { w.roomRef = null; w.path = path; w.mode = 'out'; w.stuck = 0; w.noProg = 0; w.bestD = undefined; started = true; }
           }
         }
       }
@@ -1650,7 +1656,7 @@ function tickWalker(w, eff, dt) {
       if (pois.length) {
         const poi = pois[Math.floor(Math.random() * pois.length)];
         const p = pathFind(w.x, w.y, poi.x + (Math.random() * 10 - 5), poi.y + (Math.random() * 8 - 4));
-        if (p && p.length) w.path = p;
+        if (p && p.length) { w.path = p; w.noProg = 0; w.bestD = undefined; w.repathed = false; w.side = 0; }
       }
     }
   } else if (w.mode === 'back') {
