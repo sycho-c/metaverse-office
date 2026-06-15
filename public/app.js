@@ -1555,17 +1555,29 @@ function moveTo(w, tx, ty, dt) {
   w.stuck = moved < 0.2 ? w.stuck + dt : 0;
   return Math.hypot(tx - w.x, ty - w.y) < 1.6;
 }
-// 경유점(path) 따라 이동 — 막히면 다음 경유점으로 건너뜀
+// 경유점(path) 따라 이동 — 끼이면 비켜서기 → 경로 재계산 → 경유점 스킵 순으로 빠르게 복구
 function moveAlong(w, dt) {
   if (!w.path || !w.path.length) return true;
   const p = w.path[0];
-  if (moveTo(w, p.x, p.y, dt)) { w.path.shift(); w.stuck = 0; return !w.path.length; }
-  if (w.stuck > 700 && w.stuck < 3000) {        // 살짝 막힘 → 옆으로 살짝 비켜 우회(벽 관통 방지 위해 소폭)
-    const s = Math.random() < 0.5 ? 2 : -2;
-    if (!blocked(w.x + s, w.y)) w.x += s;
-    else if (!blocked(w.x, w.y + s)) w.y += s;
-  } else if (w.stuck > 3000) {                  // 오래 막힘 → 경유점 건너뜀(안전장치)
-    w.path.shift(); w.stuck = 0;
+  if (moveTo(w, p.x, p.y, dt)) {               // 경유점 도달 → 다음으로, 복구 상태 리셋
+    w.path.shift(); w.stuck = 0; w.repathed = false; w.side = 0;
+    return !w.path.length;
+  }
+  if (w.stuck > 450) {                          // 1) 진행 방향에 수직으로 비켜서기(모서리 끼임 해소)
+    const dx = p.x - w.x, dy = p.y - w.y;
+    if (!w.side) w.side = Math.random() < 0.5 ? 1 : -1;
+    let nx = 0, ny = 0;
+    if (Math.abs(dx) >= Math.abs(dy)) ny = w.side * 3; else nx = w.side * 3;
+    if (!blocked(w.x + nx, w.y + ny)) { w.x += nx; w.y += ny; }
+    else { w.side = -w.side; }                  // 막히면 반대쪽 시도
+  }
+  if (w.stuck > 1100 && !w.repathed) {          // 2) 현재 위치 → 목적지로 경로 재계산
+    const goal = w.path[w.path.length - 1];
+    const np = pathFind(w.x, w.y, goal.x, goal.y);
+    if (np && np.length) { w.path = np; w.repathed = true; w.stuck = 0; w.side = 0; }
+  }
+  if (w.stuck > 2000) {                          // 3) 최후: 경유점 건너뜀
+    w.path.shift(); w.stuck = 0; w.repathed = false; w.side = 0;
     if (!w.path.length) return true;
   }
   return false;
