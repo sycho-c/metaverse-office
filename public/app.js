@@ -1531,6 +1531,12 @@ function activeWalkerCount() {
   for (const w of walkers.values()) if (w.mode !== 'sit') n++;
   return n;
 }
+const ZONE_CAP = 2;                  // 존당 동시 방문 walker 상한(과밀 방지)
+function zoneOccupancy(r) {
+  let n = 0;
+  for (const w of walkers.values()) if (w.roomRef === r && w.mode !== 'sit') n++;
+  return n;
+}
 function pickRoamTarget(nearX, nearY, minDist) {
   for (let i = 0; i < 14; i++) {
     const x = WALL + 14 + Math.random() * (floorW - WALL * 2 - 28);
@@ -1604,7 +1610,12 @@ function tickWalker(w, eff, dt) {
           } else {
             r = rooms[Math.floor(Math.random() * rooms.length)];
           }
-          let pois = roomPOIs(r).filter((p) => !blocked(p.x, p.y));
+          // 존 정원 제한: 이미 붐비면(방문 walker ≥2) 한가한 존으로, 모두 붐비면 복도 산책
+          if (r && zoneOccupancy(r) >= ZONE_CAP) {
+            const free = rooms.filter((z) => zoneOccupancy(z) < ZONE_CAP);
+            r = free.length ? free[Math.floor(Math.random() * free.length)] : null;
+          }
+          let pois = r ? roomPOIs(r).filter((p) => !blocked(p.x, p.y)) : [];
           if (prefKind) {
             const pref = pois.filter((p) => p.kind === prefKind);
             if (pref.length && Math.random() < 0.75) pois = pref;
@@ -1630,18 +1641,16 @@ function tickWalker(w, eff, dt) {
     if (!eligible) startBack(w);
     else if (moveAlong(w, dt)) { w.mode = 'loiter'; w.timer = 5200 + Math.random() * 6000; }
   } else if (w.mode === 'loiter') {
-    if (w.path && w.path.length) {            // 방 안 산책 이동 중(타이머 정지)
+    w.timer -= dt;                            // 체류시간 상한(산책 중에도 감소 → 오래 안 머묾)
+    if (!eligible || w.timer <= 0) { startBack(w); }
+    else if (w.path && w.path.length) {       // 방 안 산책 이동 중
       moveAlong(w, dt);
-    } else {
-      w.timer -= dt;
-      if (!eligible || w.timer <= 0) startBack(w);
-      else if (w.roomRef && Math.random() < 0.015) {   // 가끔 방 안 다른 지점으로 걸어감
-        const pois = roomPOIs(w.roomRef).filter((p) => !blocked(p.x, p.y));
-        if (pois.length) {
-          const poi = pois[Math.floor(Math.random() * pois.length)];
-          const p = pathFind(w.x, w.y, poi.x + (Math.random() * 10 - 5), poi.y + (Math.random() * 8 - 4));
-          if (p && p.length) w.path = p;
-        }
+    } else if (w.roomRef && Math.random() < 0.01) {   // 가끔 방 안 다른 지점으로 걸어감
+      const pois = roomPOIs(w.roomRef).filter((p) => !blocked(p.x, p.y));
+      if (pois.length) {
+        const poi = pois[Math.floor(Math.random() * pois.length)];
+        const p = pathFind(w.x, w.y, poi.x + (Math.random() * 10 - 5), poi.y + (Math.random() * 8 - 4));
+        if (p && p.length) w.path = p;
       }
     }
   } else if (w.mode === 'back') {
