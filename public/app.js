@@ -1152,9 +1152,8 @@ function drawZone(z, t) {
     drawAILabWall(x + 4, y + 5, w - 8, t);              // Claude/GPT/Gemini 대시보드
     drawTokenBar(x + 6, y + 30, w - 44, t);             // Token Usage
     drawAgentHealth(x + w - 32, y + 28, t);             // Agent Health
-    drawServerRack(x + 8, y + 38, t);                   // GPU 클러스터
-    drawServerRack(x + 27, y + 38, t);
-    drawServerRack(x + w - 27, y + 38, t);
+    drawServerRack(x + 10, y + 38, t);                  // GPU 클러스터(양끝 2개, 넓은 중앙 통로)
+    drawServerRack(x + w - 26, y + 38, t);
     drawPlant(x + w / 2 - 6, y + h - 22, false);
   } else if (z.type === 'collab') {
     drawWhiteboard(x + 8, y + 6, w - 16);               // 상단 화이트보드
@@ -1948,9 +1947,9 @@ function collectObstacles(layout) {
     obstacles.push({ x: r.x, y: r.y, w: WT, h: r.h });                   // 좌
     obstacles.push({ x: r.x + r.w - WT, y: r.y, w: WT, h: r.h });        // 우(공유 벽 포함)
     if (r.type === 'ailab') {
-      obstacles.push({ x: r.x + 8, y: r.y + 38, w: 16, h: 31 });         // GPU 랙×3
-      obstacles.push({ x: r.x + 27, y: r.y + 38, w: 16, h: 31 });
-      obstacles.push({ x: r.x + r.w - 27, y: r.y + 38, w: 16, h: 31 });
+      // GPU 랙 2개를 양끝에 — 넓은 중앙 통로 확보(이전 3개는 간격 3px라 마진 합치며 좌측이 통째로 막혀 갇힘)
+      obstacles.push({ x: r.x + 10, y: r.y + 38, w: 16, h: 31 });
+      obstacles.push({ x: r.x + r.w - 26, y: r.y + 38, w: 16, h: 31 });
     } else if (r.type === 'collab') {
       obstacles.push({ x: cx - 11, y: r.y + 48, w: 22, h: 18 });         // 회의 테이블
     } else if (r.type === 'focus') {
@@ -1985,12 +1984,12 @@ function roomAt(x, y) {
 // kind: coffee/sofa/rest/work/talk — 상태별 행동 선택에 사용
 function roomPOIs(r) {
   const cx = r.x + r.w / 2;
-  if (r.type === 'ailab') return [
-    { x: r.x + 24, y: r.y + 74, kind: 'work' },   // 좌 서버랙 앞
-    { x: r.x + r.w - 22, y: r.y + 74, kind: 'work' }, // 우 서버랙 앞
-    { x: cx, y: r.y + 88, kind: 'work' },         // 대시보드 앞(서서 보기)
-    { x: cx - 18, y: r.y + 104, kind: 'work' },
-    { x: cx + 20, y: r.y + 100, kind: 'work' },
+  if (r.type === 'ailab') return [   // 모두 양끝 랙을 피해 중앙·하단 개방부에 배치(갇힘 방지)
+    { x: cx, y: r.y + 72, kind: 'work' },         // 대시보드 앞(서서 보기)
+    { x: cx - 22, y: r.y + 94, kind: 'work' },
+    { x: cx + 22, y: r.y + 94, kind: 'work' },
+    { x: cx, y: r.y + 106, kind: 'work' },
+    { x: cx - 6, y: r.y + 84, kind: 'work' },
   ];
   if (r.type === 'focus') return [
     { x: r.x + 18, y: r.y + 78, kind: 'work' },   // 좌 부스 앞
@@ -2167,6 +2166,17 @@ function startBack(w) {
 }
 function tickWalker(w, eff, dt) {
   const eligible = eff !== 'working';   // 작업중이면 자리 지킴
+  // 탈출 안전망: 자리를 벗어난 채 너무 오래(28s) 헤매면(가구 틈에 갇혀 진동하는 경우 등)
+  // 강제로 자리 복귀. 진동 시 w.stuck 이 리셋돼 못 잡는 케이스를 벽시계로 보강.
+  if (w.mode !== 'sit') {
+    w.outMs = (w.outMs || 0) + dt;
+    if (w.outMs > 28000) {
+      w.x = w.hx; w.y = w.hy; w.roomRef = null; w.path = null;
+      w.mode = 'sit'; w.timer = 10000 + Math.random() * 22000; w.outMs = 0;
+      if (w.sid) speeches.delete(w.sid);
+      return;
+    }
+  } else { w.outMs = 0; }
   if (w.mode === 'sit') {
     w.timer -= dt;
     if (w.timer <= 0) {
@@ -2259,7 +2269,7 @@ function computeAmbient() {
   const add = (x, y, face, act) => out.push({ x: Math.round(x), y: Math.round(y), look: lookOf('npc' + (k++)), face, act });
   for (const z of rooms) {
     const cx = z.x + z.w / 2;
-    if (z.type === 'ailab') { add(z.x + 20, z.y + 78, 'up', 'work'); add(z.x + z.w - 20, z.y + 80, 'up', 'work'); }
+    if (z.type === 'ailab') { add(cx - 16, z.y + 84, 'up', 'work'); add(cx + 16, z.y + 86, 'up', 'work'); }
     else if (z.type === 'collab') { add(cx - 15, z.y + 82, 'right', 'talk'); add(cx + 15, z.y + 82, 'left', 'talk'); add(cx, z.y + 100, 'up', 'talk'); }
     else if (z.type === 'cafe') { add(z.x + 26, z.y + 70, 'up', 'rest'); add(z.x + z.w - 28, z.y + 70, 'up', 'coffee'); }
     else if (z.type === 'focus') { add(z.x + 18, z.y + 80, 'up', 'focus'); add(z.x + z.w - 18, z.y + 82, 'up', 'focus'); }
