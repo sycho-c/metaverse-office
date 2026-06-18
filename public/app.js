@@ -59,8 +59,180 @@ const THEMES = {
       qa: '#F1F6EF', qaRug: ['#D3E2CE', '#DEEAD9'],
       lounge: ['#DEE5F0', '#E8EDF6'], divider: 'rgba(120,130,150,.12)',
     },
+    // 페이지 크롬(헤더·사이드바·캔버스 외부). 상태 의미색(--working 등)은 테마 무관 고정.
+    chrome: {
+      bg: '#F0F3F8', panel: '#FFFFFF', panel2: '#F8FAFC', line: '#CBD5E1',
+      text: '#0F172A', secondary: '#334155', dim: '#64748B', outside: '#aab0ba',
+    },
   },
 };
+// 새 테마는 apple 베이스에 차이값만 덮어써 정의(누락 토큰 방지). 다크 계열은 outline/shadow도 함께 보정.
+function makeTheme(label, o) {
+  o = o || {};
+  return {
+    label,
+    C: { ...THEMES.apple.C, ...(o.C || {}) },
+    zoneFloors: { ...THEMES.apple.zoneFloors, ...(o.zoneFloors || {}) },
+    zoneRug: { ...THEMES.apple.zoneRug, ...(o.zoneRug || {}) },
+    bg: { ...THEMES.apple.bg, ...(o.bg || {}) },
+    chrome: { ...THEMES.apple.chrome, ...(o.chrome || {}) },
+  };
+}
+
+// ── Night Office (다크) ── 어두운 표면 + 밝은 외곽선/옅은 그림자 보정
+THEMES.dark = makeTheme('Night Office', {
+  C: {
+    tile: '#2b3142', tileAlt: '#262c3b', grout: 'rgba(0,0,0,.18)',
+    wall: '#3a4154', wallShade: '#2e3343', wallDark: '#222634',
+    glass: '#3d6f8f', glassDeep: '#2c536b',
+    roomWood: '#6b5836', roomWoodAlt: '#5c4b2d', roomWoodSeam: 'rgba(0,0,0,.25)',
+    roomB: '#3b4254', roomBalt: '#333a4a', roomEdge: '#1e2230',
+    rugs: [['#323a4d', '#3a4356'], ['#2f3d3a', '#374843'], ['#3d3a31', '#47433a']],
+    rugLine: 'rgba(0,0,0,.25)',
+    oakHi: '#9a7c4a', oak: '#876a3c', oakGrain: '#6f5530', oakEdge: '#5a4527',
+    alu: '#5a606e', aluHi: '#737a8a', aluDark: '#454a57',
+    white: '#cfd5e0', whiteEdge: '#aab0bd',
+    chair: '#586070', chairSeat: '#6a7384', chairDark: '#3f4655',
+    sofaBase: '#4a7a52', sofaSeat: '#5d9266', sofaHi: '#79b283', sofaDark: '#356040',
+    tan: '#b88a52', tanDark: '#8c6638',
+    potDark: '#4a5160', pot: '#5e6678', potHi: '#7b8395',
+    leafDark: '#2e7a47', leaf: '#3fa05c', leafHi: '#5cc079',
+    outline: '#0f1320', monitor: '#10131c', monitorHi: '#262c3a',
+    screenBezel: '#05070d', shadow: 'rgba(0,0,0,.32)',
+  },
+  zoneFloors: { ailab: '#2a2440', collab: '#3a3220', cafe: '#22331f', focus: '#1f2a40' },
+  zoneRug: {
+    ailab: ['#352c52', '#3f3560'], collab: ['#433a22', '#4d4329'],
+    cafe: ['#243d24', '#2c472c'], focus: ['#243650', '#2a3f5e'],
+  },
+  bg: {
+    dev: '#1f2940', devRug: ['#28324a', '#2f3a55'],
+    infra: '#222a38', infraRug: ['#2a3344', '#323d50'],
+    qa: '#1f2a25', qaRug: ['#28352c', '#2f3f34'], lounge: ['#2a3346', '#313c52'],
+    divider: 'rgba(0,0,0,.3)',
+  },
+  chrome: {
+    bg: '#11151f', panel: '#1b2130', panel2: '#161b27', line: '#2c3444',
+    text: '#E5EAF2', secondary: '#AEB6C6', dim: '#7C8698', outside: '#0b0e16',
+  },
+});
+
+// ── Warm Cozy (웜/코지) ── 우드 + 따뜻한 크림 (현재와 같은 라이트 계열, 팔레트만 교체)
+THEMES.warm = makeTheme('Warm Cozy', {
+  C: {
+    tile: '#cdbfa6', tileAlt: '#c6b89e', grout: 'rgba(120,90,50,.06)',
+    wall: '#e3d3b8', wallShade: '#d3c2a4', wallDark: '#bda988',
+    roomWood: '#e6c896', roomWoodAlt: '#dcbb84',
+    rugs: [['#ece0cc', '#f3ead9'], ['#e7d8c4', '#efe2d1'], ['#e4d3bd', '#eee2d2']],
+    oakHi: '#e9c98c', oak: '#d9b06f', oakGrain: '#c39455', oakEdge: '#a87b41',
+    white: '#fbf6ec', whiteEdge: '#e9dccb',
+    chair: '#baa888', chairSeat: '#cfbf9f', chairDark: '#9a8568',
+  },
+  zoneFloors: { ailab: '#F3E9DA', collab: '#FBEFD7', cafe: '#EEF0DC', focus: '#F4ECDD' },
+  zoneRug: {
+    ailab: ['#EBDCC4', '#F3E8D4'], collab: ['#F4E6C8', '#FBF0DA'],
+    cafe: ['#E3E6C8', '#EEF0D8'], focus: ['#ECE0CC', '#F4EBDA'],
+  },
+  bg: {
+    dev: '#F5EEDF', devRug: ['#E6D8BF', '#EFE4CF'],
+    infra: '#EFE6D4', infraRug: ['#E0D2B8', '#EADDC8'],
+    qa: '#EFEEDB', qaRug: ['#DDE0C2', '#E9EAD2'], lounge: ['#EDE3CF', '#F4ECDB'],
+    divider: 'rgba(150,120,80,.14)',
+  },
+  chrome: {
+    bg: '#F4ECDD', panel: '#FFFBF3', panel2: '#F7F0E2', line: '#D8C8A8',
+    text: '#3D3220', secondary: '#5C4B30', dim: '#8A7654', outside: '#b8a98a',
+  },
+});
+
+// ── High Contrast (하이콘트라스트) ── 가독성·접근성 강조
+THEMES.contrast = makeTheme('High Contrast', {
+  C: {
+    tile: '#dfe3ea', tileAlt: '#d6dbe4', grout: 'rgba(0,0,0,.1)',
+    wall: '#ffffff', wallShade: '#c8ced8', wallDark: '#0f172a',
+    roomEdge: '#0f172a',
+    rugs: [['#eef1f6', '#ffffff'], ['#eaf1ea', '#ffffff'], ['#f1ece4', '#ffffff']],
+    rugLine: 'rgba(0,0,0,.18)',
+    outline: '#0b0e16', screenBezel: '#000000', shadow: 'rgba(15,23,42,.28)',
+    chairDark: '#475569',
+  },
+  zoneFloors: { ailab: '#F3ECFF', collab: '#FFF6E6', cafe: '#EAF7EA', focus: '#EAF1FF' },
+  bg: {
+    dev: '#EEF4FF', devRug: ['#CCD9EE', '#D9E3F4'],
+    infra: '#E6ECF4', infraRug: ['#C4D0E2', '#D2DCEC'],
+    qa: '#EDF4EB', qaRug: ['#CBE0C6', '#D9E9D3'], lounge: ['#D6E0F0', '#E4ECF8'],
+    divider: 'rgba(15,23,42,.25)',
+  },
+  chrome: {
+    bg: '#FFFFFF', panel: '#FFFFFF', panel2: '#F1F5F9', line: '#0F172A',
+    text: '#000000', secondary: '#1E293B', dim: '#475569', outside: '#64748B',
+  },
+});
+
+// ── Retro Terminal (레트로 터미널) ── 검정 배경 + 그린 인광 CRT 감성
+THEMES.terminal = makeTheme('Retro Terminal', {
+  C: {
+    tile: '#0a120a', tileAlt: '#0c150c', grout: 'rgba(0,255,90,.05)',
+    wall: '#0e1a0e', wallShade: '#0a140a', wallDark: '#061006',
+    glass: '#163a16', glassDeep: '#0e2a0e',
+    roomWood: '#143314', roomWoodAlt: '#0f290f', roomWoodSeam: 'rgba(0,255,90,.08)',
+    roomB: '#0f1f0f', roomBalt: '#0c1a0c', roomEdge: '#1f4a1f',
+    rugs: [['#0e1f0e', '#123012'], ['#0d1d0d', '#112c11'], ['#0f210f', '#133313']],
+    rugLine: 'rgba(0,255,90,.1)',
+    oakHi: '#2a7a2a', oak: '#1f5f1f', oakGrain: '#174a17', oakEdge: '#103a10',
+    alu: '#2c5c2c', aluHi: '#3f7f3f', aluDark: '#1d401d',
+    white: '#9effa0', whiteEdge: '#5fbf61',
+    chair: '#2a5a2a', chairSeat: '#357035', chairDark: '#1a3f1a',
+    sofaBase: '#1f6f3a', sofaSeat: '#2a8a4a', sofaHi: '#3faf63', sofaDark: '#144f28',
+    tan: '#3a8a3a', tanDark: '#256025',
+    potDark: '#1d401d', pot: '#2a5c2a', potHi: '#3f7f3f',
+    leafDark: '#1f8a3a', leaf: '#2fb04c', leafHi: '#4cd069',
+    outline: '#031003', monitor: '#020a02', monitorHi: '#0f2f0f',
+    screenBezel: '#000000', shadow: 'rgba(0,40,0,.4)',
+  },
+  zoneFloors: { ailab: '#0c1a0c', collab: '#0e1c0e', cafe: '#0a1a0a', focus: '#0c1c10' },
+  zoneRug: {
+    ailab: ['#102a10', '#143514'], collab: ['#0f280f', '#133313'],
+    cafe: ['#0d240d', '#112e11'], focus: ['#0e2814', '#13351a'],
+  },
+  bg: {
+    dev: '#081408', devRug: ['#0e220e', '#123012'],
+    infra: '#0a160a', infraRug: ['#0e220e', '#122e12'],
+    qa: '#081608', qaRug: ['#0d240d', '#113011'], lounge: ['#0e220e', '#133313'],
+    divider: 'rgba(0,255,90,.12)',
+  },
+  chrome: {
+    bg: '#030a03', panel: '#081408', panel2: '#061006', line: '#1a4a1a',
+    text: '#7dff80', secondary: '#4fbf52', dim: '#359638', outside: '#010401',
+  },
+});
+
+// ── Claude (브랜드) ── 테라코타 + 크림 (Anthropic 톤)
+THEMES.claude = makeTheme('Claude', {
+  C: {
+    tile: '#e8ddd0', tileAlt: '#e1d5c6', grout: 'rgba(150,90,60,.05)',
+    wall: '#efe6da', wallShade: '#ddd0c0', wallDark: '#c8b6a2',
+    roomWood: '#e6c79c', roomWoodAlt: '#dcb988',
+    rugs: [['#f1e6d8', '#f7efe4'], ['#eaddcc', '#f2e8da'], ['#ecdfd0', '#f3e9dc']],
+    oakHi: '#e8c897', oak: '#d9b078', oakGrain: '#c2945c', oakEdge: '#a87a44',
+    white: '#faf4ea', whiteEdge: '#e8dccb',
+    sofaBase: '#cc7a52', sofaSeat: '#dd9470', sofaHi: '#ecb295', sofaDark: '#a85f3a',
+    tan: '#d99a6a', tanDark: '#b87440',
+    leafDark: '#9a6b3a', leaf: '#bb884c', leafHi: '#d6a868',
+  },
+  zoneFloors: { ailab: '#F3E6DA', collab: '#FBEEDD', cafe: '#EFEADC', focus: '#F4EADD' },
+  bg: {
+    dev: '#F5EBDD', devRug: ['#E9D8C2', '#F1E4D2'],
+    infra: '#EFE4D4', infraRug: ['#E2D0B9', '#ECDDC9'],
+    qa: '#F0EBD9', qaRug: ['#DFD9BF', '#EAE5D0'], lounge: ['#EEE0CF', '#F5EBDB'],
+    divider: 'rgba(180,120,80,.14)',
+  },
+  chrome: {
+    bg: '#F0E9DD', panel: '#FFFBF4', panel2: '#F5EDE0', line: '#D9C3A8',
+    text: '#3A2E22', secondary: '#5C4632', dim: '#8A6E54', outside: '#bca588',
+  },
+});
+
 function resolveTheme() {
   try { const t = localStorage.getItem('office.theme'); if (t && THEMES[t]) return t; } catch (e) { /* */ }
   return 'apple';
@@ -68,10 +240,21 @@ function resolveTheme() {
 let activeTheme = resolveTheme();
 let TH = THEMES[activeTheme];          // 활성 테마(존 바닥·러그·배경 참조용)
 let C = TH.C;                          // 월드 팔레트(테마 전환 시 재할당 — frame()이 매 프레임 참조)
-// 테마 전환 훅(Phase 2 UI/단축키에서 호출). 리로드 없이 즉시 반영.
+// 페이지 크롬(헤더·사이드바·캔버스 외부) CSS 변수 적용 — 상태 의미색은 건드리지 않음
+function applyChrome(th) {
+  const r = document.documentElement.style, c = th.chrome;
+  r.setProperty('--bg', c.bg); r.setProperty('--panel', c.panel); r.setProperty('--panel2', c.panel2);
+  r.setProperty('--line', c.line); r.setProperty('--text', c.text);
+  r.setProperty('--secondary', c.secondary); r.setProperty('--dim', c.dim);
+  r.setProperty('--outside', c.outside);
+}
+// 테마 전환 — 리로드 없이 즉시 반영(frame()이 매 프레임 C/TH 참조)
 function setTheme(name) {
   if (!THEMES[name]) return false;
   activeTheme = name; TH = THEMES[name]; C = TH.C; ZONE_RUG = TH.zoneRug;
+  applyChrome(TH);
+  const sel = document.getElementById('theme-select');
+  if (sel && sel.value !== name) sel.value = name;   // 드롭다운 표시 동기화(프로그램/단축키 전환 대비)
   try { localStorage.setItem('office.theme', name); } catch (e) { /* */ }
   return true;
 }
@@ -2198,6 +2381,22 @@ function frame(t) {
   }
   requestAnimationFrame(frame);
 }
+
+// ---------- 테마 초기화 + 드롭다운 ----------
+function initThemeUI() {
+  applyChrome(TH);                        // 저장된 테마의 페이지 크롬 적용
+  const sel = document.getElementById('theme-select');
+  if (!sel) return;
+  sel.innerHTML = '';
+  for (const t of window.officeTheme.list()) {
+    const o = document.createElement('option');
+    o.value = t.key; o.textContent = t.label;
+    sel.appendChild(o);
+  }
+  sel.value = activeTheme;
+  sel.addEventListener('change', (e) => { setTheme(e.target.value); });  // 캔버스는 매 프레임 C/TH 참조 → 즉시 반영
+}
+initThemeUI();
 
 setInterval(renderPanel, 30000);
 connect();

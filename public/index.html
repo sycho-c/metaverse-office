@@ -74,8 +74,16 @@
   #canvas-wrap {
     flex: 1; overflow: auto; padding: 14px;
     display: flex; justify-content: center; align-items: flex-start;
-    background: #aab0ba;   /* 오피스 밖(아직 확장 안된) 영역 = 진한 회색 */
+    background: var(--outside, #aab0ba);   /* 오피스 밖 영역(테마별 색) */
+    transition: background .25s ease;
   }
+  /* 테마 선택 드롭다운 */
+  .theme-sel {
+    font: inherit; font-size: 12px; color: var(--secondary);
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 999px; padding: 5px 10px; cursor: pointer; outline: none;
+  }
+  .theme-sel:hover { border-color: var(--dim); }
   canvas#office {
     image-rendering: pixelated;
     border-radius: 10px;
@@ -171,6 +179,7 @@
       <span class="hu-cost" id="ucost"></span>
       <span class="hu-reset" id="u5reset" hidden></span><span class="hu-reset" id="uwreset" hidden></span>
     </div>
+    <select id="theme-select" class="theme-sel" title="테마 선택"></select>
     <label class="toggle"><input type="checkbox" id="hide-done" />완료 숨기기</label>
     <span id="conn">연결 중…</span>
   </header>
