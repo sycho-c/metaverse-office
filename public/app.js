@@ -64,18 +64,38 @@ const THEMES = {
       bg: '#F0F3F8', panel: '#FFFFFF', panel2: '#F8FAFC', line: '#CBD5E1',
       text: '#0F172A', secondary: '#334155', dim: '#64748B', outside: '#aab0ba',
     },
+    decorStyle: 'office',
   },
 };
 // 새 테마는 apple 베이스에 차이값만 덮어써 정의(누락 토큰 방지). 다크 계열은 outline/shadow도 함께 보정.
+// hex 를 비율 f 만큼 어둡게(0~1). 존 러그를 바닥색에서 자동 파생할 때 사용.
+function darken(hex, f) {
+  let h = hex.replace('#', '');
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  const n = parseInt(h, 16);
+  const r = Math.round(((n >> 16) & 255) * (1 - f));
+  const g = Math.round(((n >> 8) & 255) * (1 - f));
+  const b = Math.round((n & 255) * (1 - f));
+  return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+// zoneRug 미지정 테마는 바닥색에서 러그를 파생(바닥 위 살짝 어두운 톤) → 자동 톤 일치
+function deriveRugs(zf) {
+  const out = {};
+  for (const k of Object.keys(zf)) out[k] = [darken(zf[k], 0.07), darken(zf[k], 0.035)];
+  return out;
+}
 function makeTheme(label, o) {
   o = o || {};
+  const zoneFloors = { ...THEMES.apple.zoneFloors, ...(o.zoneFloors || {}) };
   return {
     label,
     C: { ...THEMES.apple.C, ...(o.C || {}) },
-    zoneFloors: { ...THEMES.apple.zoneFloors, ...(o.zoneFloors || {}) },
-    zoneRug: { ...THEMES.apple.zoneRug, ...(o.zoneRug || {}) },
+    zoneFloors,
+    // 러그를 명시하면 그대로, 아니면 바닥에서 파생(테마 바닥에 애플 파스텔 러그가 덮이던 문제 방지)
+    zoneRug: o.zoneRug ? { ...THEMES.apple.zoneRug, ...o.zoneRug } : deriveRugs(zoneFloors),
     bg: { ...THEMES.apple.bg, ...(o.bg || {}) },
     chrome: { ...THEMES.apple.chrome, ...(o.chrome || {}) },
+    decorStyle: o.decorStyle || 'office',   // 좌우 페리미터 장식 세트(DECOR 키)
   };
 }
 
@@ -325,6 +345,14 @@ THEMES.openai = makeTheme('OpenAI', {
   bg: { ...THEMES.dark.bg, dev: '#16241f', devRug: ['#1e3029', '#243a31'], qa: '#16241d' },
   chrome: { ...THEMES.dark.chrome, bg: '#0a1411', panel: '#10201b', panel2: '#0c1813', line: '#1d3a32', text: '#d6f0e6', secondary: '#9fc9bb', dim: '#6b9688', outside: '#06100d' },
 });
+
+// 테마별 시그니처 장식 세트 연결(나머지는 'office' 기본)
+THEMES.terminal.decorStyle = 'terminal';
+THEMES.newyork.decorStyle = 'loft';
+THEMES.warm.decorStyle = 'cozy';
+THEMES.svalley.decorStyle = 'svalley';
+THEMES.tesla.decorStyle = 'tesla';
+THEMES.openai.decorStyle = 'openai';
 
 function resolveTheme() {
   try { const t = localStorage.getItem('office.theme'); if (t && THEMES[t]) return t; } catch (e) { /* */ }
@@ -1155,6 +1183,81 @@ function drawZone(z, t) {
 }
 
 // ---------- 복도 데코 ----------
+// ---------- 테마별 시그니처 장식 오브젝트 (팔레트 토큰으로 그려 테마색 자동 적용) ----------
+function drawCRT(x, y) {                       // 레트로 CRT 모니터(인광 화면)
+  shadow(x + 9, y + 21, 20, 3);
+  ctx.fillStyle = C.aluDark; ctx.fillRect(x + 5, y + 18, 9, 3);
+  ctx.fillStyle = C.alu; ctx.fillRect(x, y, 19, 17);
+  ctx.fillStyle = C.aluHi; ctx.fillRect(x, y, 19, 1);
+  ctx.fillStyle = C.screenBezel; ctx.fillRect(x + 2, y + 2, 15, 12);
+  ctx.fillStyle = C.leaf;
+  for (let i = 0; i < 4; i++) ctx.fillRect(x + 4, y + 4 + i * 2, 4 + ((i * 5 + Math.floor(lastT / 400)) % 9), 1);
+}
+function drawServerTower(x, y) {               // 타워 PC + 점멸 LED
+  shadow(x + 8, y + 27, 16, 3);
+  ctx.fillStyle = C.monitor; ctx.fillRect(x + 3, y, 12, 26);
+  ctx.fillStyle = C.monitorHi; ctx.fillRect(x + 3, y, 12, 2);
+  for (let u = 0; u < 4; u++) { ctx.fillStyle = C.screenBezel; ctx.fillRect(x + 5, y + 5 + u * 4, 8, 2); }
+  ctx.fillStyle = (Math.floor(lastT / 320) % 2) ? C.leafHi : C.leafDark; ctx.fillRect(x + 11, y + 5, 2, 2);
+}
+function drawBrickPlanter(x, y) {              // 노출 벽돌 화단 (NY)
+  shadow(x + 9, y + 22, 20, 3);
+  ctx.fillStyle = C.oakEdge; ctx.fillRect(x, y + 8, 19, 14);
+  ctx.fillStyle = C.oak;
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) ctx.fillRect(x + 1 + c * 6 + (r % 2 ? 3 : 0), y + 9 + r * 4, 5, 3);
+  drawPlant(x + 5, y - 6, true);
+}
+function drawPipe(x, y) {                       // 산업용 파이프 (NY)
+  ctx.fillStyle = C.aluDark; ctx.fillRect(x + 4, y, 4, 26);
+  ctx.fillStyle = C.alu; ctx.fillRect(x + 5, y, 1, 26);
+  ctx.fillStyle = C.aluDark; ctx.fillRect(x + 2, y + 6, 8, 2); ctx.fillRect(x + 2, y + 18, 8, 2);
+  ctx.fillStyle = C.aluHi; ctx.fillRect(x + 2, y + 6, 8, 1);
+}
+function drawFloorLamp(x, y) {                  // 플로어 램프 (cozy)
+  shadow(x + 7, y + 26, 12, 3);
+  ctx.fillStyle = C.aluDark; ctx.fillRect(x + 6, y + 10, 2, 16);
+  ctx.fillStyle = C.tan; ctx.beginPath(); ctx.moveTo(x + 2, y + 10); ctx.lineTo(x + 12, y + 10); ctx.lineTo(x + 10, y); ctx.lineTo(x + 4, y); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,228,160,.55)'; ctx.fillRect(x + 4, y + 9, 6, 2);
+}
+function drawBookStack(x, y) {                  // 쌓인 책 (cozy)
+  shadow(x + 8, y + 22, 16, 3);
+  const cols = ['#bb5555', '#4a78bb', '#46a468', '#c39247', '#8f68c4'];
+  for (let i = 0; i < 5; i++) {
+    const w = 15 - (i % 2) * 3, bx = x + (i % 2) * 2, by = y + 18 - i * 4;
+    ctx.fillStyle = cols[i % 5]; ctx.fillRect(bx, by, w, 4);
+    ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(bx, by, w, 1);
+  }
+}
+function drawBeanBag(x, y) {                    // 빈백 (SV)
+  shadow(x + 9, y + 18, 20, 4);
+  ctx.fillStyle = C.sofaDark; ctx.beginPath(); ctx.ellipse(x + 9, y + 12, 10, 7, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = C.sofaSeat; ctx.beginPath(); ctx.ellipse(x + 9, y + 10, 9, 6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = C.sofaHi; ctx.beginPath(); ctx.ellipse(x + 7, y + 8, 4, 2, 0, 0, Math.PI * 2); ctx.fill();
+}
+function drawCharger(x, y) {                    // EV 월 차저 (Tesla)
+  shadow(x + 8, y + 24, 12, 3);
+  ctx.fillStyle = C.white; ctx.fillRect(x + 3, y, 11, 20);
+  ctx.fillStyle = C.whiteEdge; ctx.fillRect(x + 3, y, 11, 2);
+  ctx.fillStyle = C.sofaBase; ctx.fillRect(x + 6, y + 5, 5, 5);
+  ctx.fillStyle = C.aluDark; ctx.fillRect(x + 8, y + 12, 2, 10); ctx.fillRect(x + 8, y + 22, 5, 2);
+}
+// 데코 스타일별 좌우 페리미터 장식 세트 (애니메이션 props 는 lastT 사용)
+const DECOR = {
+  office: [(x, y) => drawBookshelf(x, y), (x, y) => drawLocker(x, y), (x, y) => drawPhoneBooth(x + 1, y),
+           (x, y) => { drawPlant(x + 4, y + 8, true); drawPlant(x + 12, y + 16, false); }],
+  terminal: [(x, y) => drawCRT(x, y), (x, y) => drawServerTower(x, y), (x, y) => drawBookshelf(x, y),
+             (x, y) => { drawPlant(x + 4, y + 8, true); drawPlant(x + 12, y + 16, false); }],
+  loft: [(x, y) => drawBrickPlanter(x, y), (x, y) => drawPipe(x, y), (x, y) => drawBookshelf(x, y), (x, y) => drawLocker(x, y)],
+  cozy: [(x, y) => drawBookStack(x, y), (x, y) => drawFloorLamp(x, y), (x, y) => drawBookshelf(x, y),
+         (x, y) => { drawPlant(x + 4, y + 6, true); drawPlant(x + 12, y + 16, true); }],
+  svalley: [(x, y) => drawBeanBag(x, y), (x, y) => drawBookshelf(x, y), (x, y) => drawPhoneBooth(x + 1, y),
+            (x, y) => { drawPlant(x + 4, y + 8, true); drawPlant(x + 12, y + 16, false); }],
+  tesla: [(x, y) => drawCharger(x, y), (x, y) => drawLocker(x, y), (x, y) => drawPhoneBooth(x + 1, y),
+          (x, y) => drawPlant(x + 6, y + 10, true)],
+  openai: [(x, y) => drawServerTower(x, y), (x, y) => drawCRT(x, y), (x, y) => drawLocker(x, y),
+           (x, y) => drawPlant(x + 6, y + 10, true)],
+};
+
 function drawCorridorDecor(layout) {
   ctx.setTransform(S, 0, 0, S, 0, 0);
   const { W, podRows, workY } = layout;
@@ -1207,12 +1310,7 @@ function drawQAZone(x, y, w, h, t) {
 function drawPerimeterDecor(layout) {
   ctx.setTransform(S, 0, 0, S, 0, 0);
   const { W, workY, bottomTop } = layout;
-  const items = [
-    (x, y) => drawBookshelf(x, y),
-    (x, y) => drawLocker(x, y),
-    (x, y) => drawPhoneBooth(x + 1, y),
-    (x, y) => { drawPlant(x + 4, y + 8, true); drawPlant(x + 12, y + 16, false); },
-  ];
+  const items = DECOR[TH.decorStyle] || DECOR.office;   // 테마별 시그니처 장식 세트
   let i = 0;
   for (let y = workY + 4; y < bottomTop - 30; y += 38) {
     if (!blocked(WALL + 11, y + 14) && !blocked(WALL + 11, y + 26)) { items[i % items.length](WALL + 2, y); i++; }
