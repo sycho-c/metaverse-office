@@ -233,6 +233,99 @@ THEMES.claude = makeTheme('Claude', {
   },
 });
 
+// ── Seoul Office (플레이스) ── 밝고 청량한 한국 IT 오피스: 쿨 블루그레이 + 메이플 + 스카이 액센트
+THEMES.seoul = makeTheme('Seoul Office', {
+  C: {
+    tile: '#c2cdda', tileAlt: '#bcc7d5', wall: '#e2e9f1', wallShade: '#cdd6e2', wallDark: '#aab6c6',
+    oakHi: '#f3e2bd', oak: '#ecd2a2', oakGrain: '#d8bd82', oakEdge: '#c4a468',
+    sofaBase: '#5b94c9', sofaSeat: '#79abdc', sofaHi: '#9fc8ec', sofaDark: '#3f6f9e',
+  },
+  zoneFloors: { ailab: '#EAF0FB', collab: '#FFF6E8', cafe: '#EAF6F0', focus: '#EAF1FB' },
+  bg: {
+    dev: '#EDF3FC', devRug: ['#D4E1F2', '#DFE9F6'], infra: '#E8EEF6', infraRug: ['#CDD9EA', '#DAE3F0'],
+    qa: '#EBF4F0', qaRug: ['#CFE3D8', '#DCEAE2'], lounge: ['#DCE7F4', '#E8EFF9'], divider: 'rgba(90,120,160,.14)',
+  },
+  chrome: { bg: '#EEF3FA', panel: '#FFFFFF', panel2: '#F4F8FD', line: '#C7D4E4', text: '#16263b', secondary: '#33506e', dim: '#6781a0', outside: '#9fb0c6' },
+});
+
+// ── New York Loft (플레이스) ── 인더스트리얼 로프트: 벽돌·콘크리트 + 앰버
+THEMES.newyork = makeTheme('New York Loft', {
+  C: {
+    tile: '#b0a79c', tileAlt: '#a89f93', grout: 'rgba(60,45,30,.08)',
+    wall: '#cabfb0', wallShade: '#b3a796', wallDark: '#8f8474',
+    oakHi: '#caa06a', oak: '#b5854f', oakGrain: '#996c3c', oakEdge: '#7d5630',
+    sofaBase: '#a45040', sofaSeat: '#bf6a58', sofaHi: '#d68f7e', sofaDark: '#7d3a2d',
+    tan: '#c69a68', tanDark: '#9c7546',
+  },
+  zoneFloors: { ailab: '#E9E2D6', collab: '#EFE6D2', cafe: '#E6E6D4', focus: '#E8E3D8' },
+  bg: {
+    dev: '#ECE5D9', devRug: ['#D8CBB4', '#E2D7C4'], infra: '#E6DDCE', infraRug: ['#D2C4AC', '#DDD1BD'],
+    qa: '#E8E6D5', qaRug: ['#D4CDB2', '#E0DAC6'], lounge: ['#E4DAC8', '#ECE3D4'], divider: 'rgba(90,70,45,.16)',
+  },
+  chrome: { bg: '#E8E1D4', panel: '#F7F2E9', panel2: '#EEE7DA', line: '#CBBBA2', text: '#33291d', secondary: '#544532', dim: '#82705a', outside: '#9c8f7c' },
+});
+
+// ── Silicon Valley (플레이스) ── 밝은 스타트업: 화이트 + 그린 에너지
+THEMES.svalley = makeTheme('Silicon Valley', {
+  C: {
+    tile: '#dfe6e2', tileAlt: '#d7dfdb', wall: '#eef2ef', wallShade: '#d8e0db', wallDark: '#b6c2bb',
+    oakHi: '#eadfb8', oak: '#ddcb95',
+    sofaBase: '#3fae6a', sofaSeat: '#5cc585', sofaHi: '#85dba6', sofaDark: '#2c8a4f',
+  },
+  zoneFloors: { ailab: '#EFEAFB', collab: '#FBF4E2', cafe: '#E6F6E8', focus: '#E8F1FA' },
+  bg: {
+    dev: '#EDF5EF', devRug: ['#D2E6D8', '#DEEDE2'], infra: '#E9F0EB', infraRug: ['#CCE0D2', '#D9E9DD'],
+    qa: '#E8F5EA', qaRug: ['#CBE6CF', '#D9EEDC'], lounge: ['#DCEAE0', '#E8F2EB'], divider: 'rgba(80,140,90,.14)',
+  },
+  chrome: { bg: '#EEF4F0', panel: '#FFFFFF', panel2: '#F4F9F5', line: '#CBDBD0', text: '#16291d', secondary: '#2f5640', dim: '#5e8770', outside: '#a3b3a8' },
+});
+
+// ── Tesla (브랜드) ── 미니멀 모노크롬: 화이트·그래파이트 + 레드 액센트
+THEMES.tesla = makeTheme('Tesla', {
+  C: {
+    tile: '#dfe1e5', tileAlt: '#d7d9de', grout: 'rgba(0,0,0,.05)',
+    wall: '#f0f1f3', wallShade: '#d6d8dd', wallDark: '#a9adb5',
+    oakHi: '#d6d8dd', oak: '#c2c5cc', oakGrain: '#aab0b8', oakEdge: '#8e949d',   // 무광 그래파이트 데스크
+    sofaBase: '#cc3d39', sofaSeat: '#e05a52', sofaHi: '#ee8079', sofaDark: '#9e2a28',
+    tan: '#b0b4bb', tanDark: '#8a8f98',
+  },
+  zoneFloors: { ailab: '#EEEFF2', collab: '#F2F3F5', cafe: '#EDF0EF', focus: '#EBEEF2' },
+  bg: {
+    dev: '#EFF1F4', devRug: ['#DADDE3', '#E5E8ED'], infra: '#E9EBEF', infraRug: ['#D2D6DD', '#DEE2E8'],
+    qa: '#EDEFF1', qaRug: ['#D6DBD9', '#E2E6E4'], lounge: ['#E0E3E9', '#EAEDF1'], divider: 'rgba(40,44,52,.14)',
+  },
+  chrome: { bg: '#F2F3F5', panel: '#FFFFFF', panel2: '#EEEFF2', line: '#C8CCD3', text: '#16181c', secondary: '#3a3e46', dim: '#6b7079', outside: '#9a9ea6' },
+});
+
+// ── Microsoft (브랜드) ── Fluent 라이트 + 블루
+THEMES.microsoft = makeTheme('Microsoft', {
+  C: {
+    tile: '#cdd6e3', tileAlt: '#c6cfdd', wall: '#e6ecf4', wallShade: '#d2dae6', wallDark: '#aeb9ca',
+    oakHi: '#eedfba', oak: '#e2cd98',
+    sofaBase: '#3a78c4', sofaSeat: '#5a95da', sofaHi: '#86b6ec', sofaDark: '#285a9b',
+  },
+  zoneFloors: { ailab: '#EBE9FA', collab: '#FBF3E0', cafe: '#E7F4EA', focus: '#E6EFFB' },
+  bg: {
+    dev: '#EBF1FB', devRug: ['#D2DEF1', '#DEE8F6'], infra: '#E7EDF6', infraRug: ['#CBD8EA', '#D8E2F0'],
+    qa: '#E9F3EC', qaRug: ['#CDE4D1', '#DBEDDE'], lounge: ['#DAE6F4', '#E7EFF9'], divider: 'rgba(60,110,180,.14)',
+  },
+  chrome: { bg: '#EDF2F9', panel: '#FFFFFF', panel2: '#F3F7FC', line: '#C6D3E4', text: '#16243a', secondary: '#30496e', dim: '#5f7a9f', outside: '#9fadc2' },
+});
+
+// ── OpenAI (브랜드) ── 다크 + 틸 그린 (dark 베이스에서 파생)
+THEMES.openai = makeTheme('OpenAI', {
+  C: {
+    ...THEMES.dark.C,
+    tile: '#22302c', tileAlt: '#1e2b28', glass: '#1f6b5e', glassDeep: '#134d44',
+    sofaBase: '#0e8c6e', sofaSeat: '#13a583', sofaHi: '#2bc49e', sofaDark: '#0a6b55',
+    leafDark: '#0e8c6e', leaf: '#13a583', leafHi: '#2bc49e',
+  },
+  zoneFloors: { ...THEMES.dark.zoneFloors, cafe: '#173a30', focus: '#1c2e2a' },
+  zoneRug: { ...THEMES.dark.zoneRug, cafe: ['#1c3d30', '#23493a'] },
+  bg: { ...THEMES.dark.bg, dev: '#16241f', devRug: ['#1e3029', '#243a31'], qa: '#16241d' },
+  chrome: { ...THEMES.dark.chrome, bg: '#0a1411', panel: '#10201b', panel2: '#0c1813', line: '#1d3a32', text: '#d6f0e6', secondary: '#9fc9bb', dim: '#6b9688', outside: '#06100d' },
+});
+
 function resolveTheme() {
   try { const t = localStorage.getItem('office.theme'); if (t && THEMES[t]) return t; } catch (e) { /* */ }
   return 'apple';
