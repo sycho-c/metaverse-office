@@ -84,6 +84,21 @@
     border-radius: 999px; padding: 5px 10px; cursor: pointer; outline: none;
   }
   .theme-sel:hover { border-color: var(--dim); }
+  /* Claude 서비스 상태 칩 */
+  .cstatus {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 999px;
+    background: var(--panel); border: 1px solid var(--line); color: var(--secondary);
+    text-decoration: none; white-space: nowrap; cursor: pointer;
+    transition: border-color .15s;
+  }
+  .cstatus:hover { border-color: var(--dim); }
+  .cstatus .cstatus-dot {
+    width: 9px; height: 9px; border-radius: 50%; background: #94A3B8; flex-shrink: 0;
+    box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 0%, #94A3B8 22%);
+  }
+  .cstatus.live .cstatus-dot { animation: cstatus-pulse 2s ease-in-out infinite; }
+  @keyframes cstatus-pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
   canvas#office {
     image-rendering: pixelated;
     border-radius: 10px;
@@ -173,6 +188,9 @@
       <span class="chip done">완료 <b id="c-done">0</b></span>
     </div>
     <div class="spacer"></div>
+    <a id="claude-status" class="cstatus" href="https://status.claude.com" target="_blank" rel="noopener" title="Claude 서비스 상태">
+      <span class="cstatus-dot"></span><span class="cstatus-label">Claude 상태…</span>
+    </a>
     <div id="usage" class="hu" style="display:none">
       <span class="hu-item" id="u5item"><span class="hu-lbl">5시간</span><span class="hu-track"><span class="hu-fill" id="u5fill"></span></span><span class="hu-pct" id="u5pct">–</span></span>
       <span class="hu-item" id="uwitem"><span class="hu-lbl">주간</span><span class="hu-track"><span class="hu-fill" id="uwfill"></span></span><span class="hu-pct" id="uwpct">–</span></span>
