@@ -14,30 +14,68 @@ const TOP_WALL = 22;
 const ZONE_H = 124;                // 방 깊이(캐릭터가 방 안 깊숙이 서도록)
 const CORRIDOR_H = 26;
 
-// 애플 스타일 팔레트 (화이트 · 라이트오크 · 알루미늄 · 소프트 그레이)
-const C = {
-  // 작업 영역 바닥: 매끄러운 단색 블루그레이(체크·흰점 없음, 시안 스와치 매칭)
-  tile: '#a7b3c6', tileAlt: '#a2aec2', grout: 'rgba(60,72,96,.05)',
-  wall: '#cdd5e0', wallShade: '#b3bdcb', wallDark: '#9ba6b6',
-  glass: '#b5dcf2', glassDeep: '#8cc6e8',
-  roomWood: '#ecd9b4', roomWoodAlt: '#e6d1a6', roomWoodSeam: 'rgba(160,120,60,.18)',
-  roomB: '#f1ece3', roomBalt: '#eae4d8',          // 탕비실: 따뜻한 크림 타일
-  roomEdge: '#c2c6cc',
-  rugs: [['#dde3ec', '#e5eaf1'], ['#dee8de', '#e6eee6'], ['#ece5da', '#f1ebe2']],
-  rugLine: 'rgba(0,0,0,.05)',
-  // 라이트 오크 데스크 + 알루미늄
-  oakHi: '#f0dcae', oak: '#e7cd97', oakGrain: '#d4b67c', oakEdge: '#c9a96a',
-  alu: '#d4d7dc', aluHi: '#e8eaee', aluDark: '#b2b6be',
-  white: '#f8f9fa', whiteEdge: '#dfe2e6',
-  chair: '#aeb3bb', chairSeat: '#c9ccd2', chairDark: '#8d929b',
-  sofaBase: '#8fb98a', sofaSeat: '#a8cca0', sofaHi: '#c4ddba', sofaDark: '#6e9b6b',  // 세이지 그린 라운지
-  tan: '#d8b27e', tanDark: '#bb9560',
-  potDark: '#c9ccd2', pot: '#eceef0', potHi: '#ffffff',
-  leafDark: '#3a9457', leaf: '#4cb56c', leafHi: '#6cc986',
-  outline: '#4a4d55', monitor: '#1d1f24', monitorHi: '#34373e',
-  screenBezel: '#0f1115',
-  shadow: 'rgba(60,65,78,.13)',
+// ===== 테마 레지스트리 =====
+// 환경색(바닥·벽·가구·러그·존 배경)만 테마로 분리한다. 상태 의미색(작업중/완료/대기/멈춤 =
+// SCREEN·STATE_META·TAG_COLOR)은 의미 보존을 위해 테마와 무관하게 공유한다.
+// 새 테마 추가 = THEMES 에 객체 1개 추가(같은 키 모양). 활성 테마는 localStorage('office.theme').
+const THEMES = {
+  apple: {
+    label: 'Apple Light',
+    // 월드 팔레트 (화이트 · 라이트오크 · 알루미늄 · 소프트 그레이)
+    C: {
+      // 작업 영역 바닥: 매끄러운 단색 블루그레이(체크·흰점 없음, 시안 스와치 매칭)
+      tile: '#a7b3c6', tileAlt: '#a2aec2', grout: 'rgba(60,72,96,.05)',
+      wall: '#cdd5e0', wallShade: '#b3bdcb', wallDark: '#9ba6b6',
+      glass: '#b5dcf2', glassDeep: '#8cc6e8',
+      roomWood: '#ecd9b4', roomWoodAlt: '#e6d1a6', roomWoodSeam: 'rgba(160,120,60,.18)',
+      roomB: '#f1ece3', roomBalt: '#eae4d8',          // 탕비실: 따뜻한 크림 타일
+      roomEdge: '#c2c6cc',
+      rugs: [['#dde3ec', '#e5eaf1'], ['#dee8de', '#e6eee6'], ['#ece5da', '#f1ebe2']],
+      rugLine: 'rgba(0,0,0,.05)',
+      // 라이트 오크 데스크 + 알루미늄
+      oakHi: '#f0dcae', oak: '#e7cd97', oakGrain: '#d4b67c', oakEdge: '#c9a96a',
+      alu: '#d4d7dc', aluHi: '#e8eaee', aluDark: '#b2b6be',
+      white: '#f8f9fa', whiteEdge: '#dfe2e6',
+      chair: '#aeb3bb', chairSeat: '#c9ccd2', chairDark: '#8d929b',
+      sofaBase: '#8fb98a', sofaSeat: '#a8cca0', sofaHi: '#c4ddba', sofaDark: '#6e9b6b',  // 세이지 그린 라운지
+      tan: '#d8b27e', tanDark: '#bb9560',
+      potDark: '#c9ccd2', pot: '#eceef0', potHi: '#ffffff',
+      leafDark: '#3a9457', leaf: '#4cb56c', leafHi: '#6cc986',
+      outline: '#4a4d55', monitor: '#1d1f24', monitorHi: '#34373e',
+      screenBezel: '#0f1115',
+      shadow: 'rgba(60,65,78,.13)',
+    },
+    // 상단 4개 존 바닥색
+    zoneFloors: { ailab: '#F5EEFF', collab: '#FFF4E5', cafe: '#EAF5EA', focus: '#EEF4FF' },
+    // 존별 area rug [c1(안), c2(테)]
+    zoneRug: {
+      ailab: ['#E7DCF6', '#EFE7FB'], collab: ['#F2E5CC', '#F8F0DE'],
+      cafe: ['#D7E9D7', '#E3F0E3'], focus: ['#DCE7F6', '#E8EFFB'],
+    },
+    // Development/Infrastructure/QA 존 바닥·러그·구분선·빈슬롯 라운지 러그
+    bg: {
+      dev: '#EEF4FF', devRug: ['#D6E0F0', '#DFE8F5'],
+      infra: '#EAEEF4', infraRug: ['#CFD7E4', '#DAE1EC'],
+      qa: '#F1F6EF', qaRug: ['#D3E2CE', '#DEEAD9'],
+      lounge: ['#DEE5F0', '#E8EDF6'], divider: 'rgba(120,130,150,.12)',
+    },
+  },
 };
+function resolveTheme() {
+  try { const t = localStorage.getItem('office.theme'); if (t && THEMES[t]) return t; } catch (e) { /* */ }
+  return 'apple';
+}
+let activeTheme = resolveTheme();
+let TH = THEMES[activeTheme];          // 활성 테마(존 바닥·러그·배경 참조용)
+let C = TH.C;                          // 월드 팔레트(테마 전환 시 재할당 — frame()이 매 프레임 참조)
+// 테마 전환 훅(Phase 2 UI/단축키에서 호출). 리로드 없이 즉시 반영.
+function setTheme(name) {
+  if (!THEMES[name]) return false;
+  activeTheme = name; TH = THEMES[name]; C = TH.C; ZONE_RUG = TH.zoneRug;
+  try { localStorage.setItem('office.theme', name); } catch (e) { /* */ }
+  return true;
+}
+window.officeTheme = { list: () => Object.keys(THEMES).map((k) => ({ key: k, label: THEMES[k].label })), set: setTheme, current: () => activeTheme };
 
 // 디자인 시스템 시맨틱: success #22C55E / warning #F59E0B / danger #EF4444 / info #3B82F6 / neutral #64748B
 const SCREEN = {
@@ -286,7 +324,7 @@ document.getElementById('hide-done').addEventListener('change', (e) => {
 // ---------- 레이아웃 (자유 배치: 슬롯 셔플 + 벽돌 오프셋 + 지터) ----------
 function computeLayout(n) {
   const availLogical = Math.max(460, (canvas.parentElement.clientWidth - 30) / DISP);
-  const podCols = Math.max(2, Math.min(5,
+  const podCols = Math.max(2, Math.min(7,
     Math.floor((availLogical - WALL * 2 + AISLE_X) / (POD_W + AISLE_X))));
   const pods = Math.max(1, Math.ceil(Math.ceil(n * 1.5) / 4));  // 좌석 ~1.5배(빈 자리 여유)
   const podRows = Math.ceil(pods / podCols) + (pods % podCols === 0 && pods > podCols ? 0 : 0);
@@ -798,10 +836,7 @@ function drawAreaRug(x, y, w, h, c1, c2) {
   ctx.fillStyle = c1; roundRect(x + 2, y + 2, w - 4, h - 4, 5);
   ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(x + 4, y + 3, w - 8, 1);
 }
-const ZONE_RUG = {
-  ailab:  ['#E7DCF6', '#EFE7FB'], collab: ['#F2E5CC', '#F8F0DE'],
-  cafe:   ['#D7E9D7', '#E3F0E3'], focus:  ['#DCE7F6', '#E8EFFB'],
-};
+let ZONE_RUG = TH.zoneRug;            // 활성 테마의 존별 러그(테마 전환 시 setTheme에서 재할당)
 // 존 타입별 가구 렌더 (cafe / ailab / collab / focus)
 function drawZone(z, t) {
   const { x, y, w, h } = z;
@@ -868,7 +903,7 @@ function drawCorridorDecor(layout) {
 // 하단 Infrastructure 존: 서버 모니터/로그/장애판 + 서버랙 + 프린터
 function drawInfraZone(x, y, w, h, t) {
   ctx.setTransform(S, 0, 0, S, 0, 0);
-  drawAreaRug(x + 6, y + 48, w - 12, h - 54, '#CFD7E4', '#DAE1EC');
+  drawAreaRug(x + 6, y + 48, w - 12, h - 54, TH.bg.infraRug[0], TH.bg.infraRug[1]);
   const mw = Math.min(w - 60, 96);
   drawMonitorWall(x + 6, y + 4, mw, t);                  // NOC 대형 모니터 월
   drawIncidentBoard(x + mw + 12, y + 5, t);             // 장애 현황
@@ -882,7 +917,7 @@ function drawInfraZone(x, y, w, h, t) {
 // 하단 QA 존: 테스트 디바이스(폰/태블릿/안드로이드) 진열 + 락커 + 전화부스
 function drawQAZone(x, y, w, h, t) {
   ctx.setTransform(S, 0, 0, S, 0, 0);
-  drawAreaRug(x + 6, y + 50, w - 12, h - 56, '#D3E2CE', '#DEEAD9');
+  drawAreaRug(x + 6, y + 50, w - 12, h - 56, TH.bg.qaRug[0], TH.bg.qaRug[1]);
   const bw = Math.min(w - 40, 150);
   ctx.fillStyle = C.oak; ctx.fillRect(x + 8, y + 26, bw, 4);          // 테스트 벤치
   ctx.fillStyle = C.aluDark; ctx.fillRect(x + 10, y + 30, 2, 4); ctx.fillRect(x + 8 + bw - 2, y + 30, 2, 4);
@@ -1531,10 +1566,10 @@ function activeWalkerCount() {
   for (const w of walkers.values()) if (w.mode !== 'sit') n++;
   return n;
 }
-const ZONE_CAP = 2;                  // 존당 동시 방문 walker 상한(과밀 방지)
+const ZONE_CAP = 1;                  // 존당 동시 방문 walker 상한 — 1명으로 제한해 한쪽 쏠림 방지(상주 NPC 별개)
 function zoneOccupancy(r) {
-  let n = 0;
-  for (const w of walkers.values()) if (w.roomRef === r && w.mode !== 'sit') n++;
+  let n = 0;   // 존으로 향하거나(out) 머무는(loiter) walker만 — 떠나는(back) walker는 제외
+  for (const w of walkers.values()) if (w.roomRef === r && (w.mode === 'out' || w.mode === 'loiter')) n++;
   return n;
 }
 function pickRoamTarget(nearX, nearY, minDist) {
@@ -1606,20 +1641,16 @@ function tickWalker(w, eff, dt) {
     if (w.timer <= 0) {
       let started = false;
       if (eligible && activeWalkerCount() < maxWalkers && Math.random() < 0.6) {
-        if (rooms.length && Math.random() < 0.7) {     // 존 방문(상태별 목적지 편향)
-          // 입력대기→커피머신, 완료→소파, 멈춤→휴식(cafe). 그 외/잔여는 랜덤 존(AI Lab/Collab 포함)
-          const cafe = rooms.find((z) => z.type === 'cafe');
-          let r, prefKind = null;
-          if (cafe && (eff === 'blocked' || eff === 'done' || eff === 'stalled') && Math.random() < 0.7) {
-            r = cafe;
-            prefKind = eff === 'blocked' ? 'coffee' : eff === 'done' ? 'sofa' : 'rest';
-          } else {
-            r = rooms[Math.floor(Math.random() * rooms.length)];
-          }
-          // 존 정원 제한: 이미 붐비면(방문 walker ≥2) 한가한 존으로, 모두 붐비면 복도 산책
-          if (r && zoneOccupancy(r) >= ZONE_CAP) {
-            const free = rooms.filter((z) => zoneOccupancy(z) < ZONE_CAP);
-            r = free.length ? free[Math.floor(Math.random() * free.length)] : null;
+        if (rooms.length && Math.random() < 0.7) {     // 존 방문
+          // 존 선택: 정원 미달 존 중 '균등 랜덤' → 네 존(AI Lab/Collab/Cafe/Focus)에 고르게 분산.
+          // (과거엔 done/blocked/stalled 대다수가 70% 확률로 cafe에 쏠리고 overflow가 인접
+          //  AI Lab으로만 빠져 좌측 클러스터가 고착됐음. 동시 로밍 인원이 보통 1명이라
+          //  상태 친화 보너스를 두면 매번 같은 존으로 수렴 → 편향 제거. cafe가 뽑히면 POI 취향만 반영)
+          const cands = rooms.filter((z) => zoneOccupancy(z) < ZONE_CAP);   // 정원 미달 존만
+          let r = null, prefKind = null;
+          if (cands.length) {
+            r = cands[Math.floor(Math.random() * cands.length)];
+            if (r.type === 'cafe') prefKind = eff === 'blocked' ? 'coffee' : eff === 'done' ? 'sofa' : eff === 'stalled' ? 'rest' : null;
           }
           let pois = r ? roomPOIs(r).filter((p) => !blocked(p.x, p.y)) : [];
           if (prefKind) {
@@ -1958,13 +1989,17 @@ function drawPod(p, px, py, seats, t, band) {
   if ((hash('pod' + p) >>> 12) % 2) drawPlant(px + POD_W - 10, py + POD_H - 24, true);
 }
 
-// 빈 슬롯: 라운지 비네트 (자유 배치의 빈 공간 채움)
+// 빈 슬롯 러그(바닥) — 데코/가구보다 먼저 깔아 오브젝트가 러그에 묻히지 않게 함
+function drawEmptySlotFloor(px, py) {
+  ctx.setTransform(S, 0, 0, S, 0, 0);
+  drawAreaRug(px + 10, py + 14, POD_W - 20, POD_H - 30, TH.bg.lounge[0], TH.bg.lounge[1]); // 라운지 러그
+}
+// 빈 슬롯 가구: 라운지 비네트 (자유 배치의 빈 공간 채움) — 러그 위에 그림
 function drawEmptySlot(px, py, idx) {
   ctx.setTransform(S, 0, 0, S, 0, 0);
   const h = hash('empty' + idx);
   const v = h % 5;
   const cx = px + POD_W / 2, cy = py + 34;
-  drawAreaRug(px + 10, py + 14, POD_W - 20, POD_H - 30, '#DEE5F0', '#E8EDF6'); // 라운지 러그
   if (v === 0) {                       // 공용 라운지
     drawSofa(cx - 26, cy - 2, 28);
     drawCoffeeTable(cx - 6, cy + 16);
@@ -2064,10 +2099,10 @@ function frame(t) {
   const zAi = Math.round(innerW * 0.28), zCo = Math.round(innerW * 0.22), zCa = Math.round(innerW * 0.28);
   const zx = WALL;
   rooms = [
-    { type: 'ailab',  label: 'AI Lab',        floor: '#F5EEFF', x: zx,                 y: TOP_WALL, w: zAi, h: ZONE_H },
-    { type: 'collab', label: 'Collaboration', floor: '#FFF4E5', x: zx + zAi,           y: TOP_WALL, w: zCo, h: ZONE_H },
-    { type: 'cafe',   label: 'Cafe · Break',  floor: '#EAF5EA', x: zx + zAi + zCo,     y: TOP_WALL, w: zCa, h: ZONE_H },
-    { type: 'focus',  label: 'Focus Booth',   floor: '#EEF4FF', x: zx + zAi + zCo + zCa, y: TOP_WALL, w: layout.W - WALL - (zx + zAi + zCo + zCa), h: ZONE_H },
+    { type: 'ailab',  label: 'AI Lab',        floor: TH.zoneFloors.ailab,  x: zx,                 y: TOP_WALL, w: zAi, h: ZONE_H },
+    { type: 'collab', label: 'Collaboration', floor: TH.zoneFloors.collab, x: zx + zAi,           y: TOP_WALL, w: zCo, h: ZONE_H },
+    { type: 'cafe',   label: 'Cafe · Break',  floor: TH.zoneFloors.cafe,   x: zx + zAi + zCo,     y: TOP_WALL, w: zCa, h: ZONE_H },
+    { type: 'focus',  label: 'Focus Booth',   floor: TH.zoneFloors.focus,  x: zx + zAi + zCo + zCa, y: TOP_WALL, w: layout.W - WALL - (zx + zAi + zCo + zCa), h: ZONE_H },
   ];
   seatMap = buildSeatMap(vis, layout.pods);   // 1~4명 다양한 좌석 배정
   collectObstacles(layout);
@@ -2087,15 +2122,15 @@ function frame(t) {
   ctx.setTransform(S, 0, 0, S, 0, 0);
   const devTop = TOP_WALL + ZONE_H + 2;
   const innerWf = layout.W - WALL * 2, midX = WALL + Math.round(innerWf / 2);
-  ctx.fillStyle = '#EEF4FF';
+  ctx.fillStyle = TH.bg.dev;
   ctx.fillRect(WALL, devTop, innerWf, layout.bottomTop - devTop);
-  drawAreaRug(WALL + 2, devTop, innerWf - 4, layout.bottomTop - devTop - 2, '#D6E0F0', '#DFE8F5'); // Dev 카펫(벽까지)
+  drawAreaRug(WALL + 2, devTop, innerWf - 4, layout.bottomTop - devTop - 2, TH.bg.devRug[0], TH.bg.devRug[1]); // Dev 카펫(벽까지)
 
   // 하단 밴드: Infrastructure Zone(좌) / QA Zone(우)
   const by = layout.bottomTop, bh = layout.bottomH - WALL;
-  ctx.fillStyle = '#EAEEF4'; ctx.fillRect(WALL, by, midX - WALL, bh);          // Infra 바닥
-  ctx.fillStyle = '#F1F6EF'; ctx.fillRect(midX, by, layout.W - WALL - midX, bh); // QA 바닥
-  ctx.fillStyle = 'rgba(120,130,150,.12)'; ctx.fillRect(midX - 1, by + 6, 2, bh - 12); // 구분선
+  ctx.fillStyle = TH.bg.infra; ctx.fillRect(WALL, by, midX - WALL, bh);          // Infra 바닥
+  ctx.fillStyle = TH.bg.qa; ctx.fillRect(midX, by, layout.W - WALL - midX, bh); // QA 바닥
+  ctx.fillStyle = TH.bg.divider; ctx.fillRect(midX - 1, by + 6, 2, bh - 12); // 구분선
 
   zoneLabels = [];
   for (const z of rooms) {                         // 상단 4개 존
@@ -2108,20 +2143,26 @@ function frame(t) {
   drawQAZone(midX, by, layout.W - WALL - midX, bh, t);
   zoneLabels.push({ text: 'QA Zone', x: midX + 8, y: by + bh - 6 });
 
-  drawCorridorDecor(layout);
-  drawPerimeterDecor(layout);
-
   cellRects = [];
   tagJobs = [];
-  for (let e = 0; e < layout.emptySlots.length; e++) {
-    drawEmptySlot(layout.emptySlots[e].x, layout.emptySlots[e].y, e);
-  }
-  tickWalkers(vis);               // 보행 로직 갱신(그리기는 아래 깊이정렬에서)
 
-  // 바닥 패스: pod 러그는 항상 모두의 아래(러그가 캐릭터를 덮는 현상 방지)
+  // ── 바닥(러그) 패스 — 데코·가구보다 먼저 깔아 오브젝트가 러그에 묻히지 않게 함 ──
+  // pod 러그 + 빈슬롯 러그를 모두 최하단에 둔다(좌우 페리미터/복도 데코를 덮던 버그 제거)
   for (let p = 0; p < layout.pods; p++) {
     drawPod(p, layout.podPos[p].x, layout.podPos[p].y, seatMap[p] || [], t, 'floor');
   }
+  for (let e = 0; e < layout.emptySlots.length; e++) {
+    drawEmptySlotFloor(layout.emptySlots[e].x, layout.emptySlots[e].y);
+  }
+
+  // ── 데코·가구 패스 — 러그 위에 ──
+  drawCorridorDecor(layout);
+  drawPerimeterDecor(layout);
+  for (let e = 0; e < layout.emptySlots.length; e++) {
+    drawEmptySlot(layout.emptySlots[e].x, layout.emptySlots[e].y, e);
+  }
+
+  tickWalkers(vis);               // 보행 로직 갱신(그리기는 아래 깊이정렬에서)
 
   // 깊이정렬: pod를 back(뒷줄+책상)/front(앞줄) 밴드로 쪼개고 보행 캐릭터를 발끝 Y로 섞어 그림
   // → 책상 뒤(위쪽) 캐릭터는 가려지고, 앞(아래쪽)이면 위로. 러그/책상이 캐릭터를 묻는 현상 제거
