@@ -1258,6 +1258,163 @@ const DECOR = {
            (x, y) => drawPlant(x + 6, y + 10, true)],
 };
 
+// ========== 테마 히어로 오브젝트 (파격적 대형 장식 — 빈 슬롯 한 곳에 배치) ==========
+// 모두 중심좌표 (cx, cy) 기준. 약 70~80w × 60h 풋프린트.
+function drawTeslaCar(cx, cy) {                 // 사이버트럭 풍 EV
+  shadow(cx, cy + 15, 72, 7);
+  ctx.fillStyle = '#aab0b8';                    // 각진 스틸 웨지(약간 진하게 — 밝은 바닥 대비)
+  ctx.beginPath();
+  ctx.moveTo(cx - 37, cy + 9); ctx.lineTo(cx - 30, cy - 1); ctx.lineTo(cx - 4, cy - 14);
+  ctx.lineTo(cx + 17, cy - 14); ctx.lineTo(cx + 35, cy + 2); ctx.lineTo(cx + 37, cy + 9);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#2a2e35'; ctx.lineWidth = 1.5; ctx.stroke();   // 다크 외곽선
+  ctx.fillStyle = '#e2e6eb';
+  ctx.beginPath(); ctx.moveTo(cx - 4, cy - 14); ctx.lineTo(cx + 17, cy - 14); ctx.lineTo(cx + 13, cy - 9); ctx.lineTo(cx - 1, cy - 9); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#23262d';                    // 캐빈 글래스
+  ctx.beginPath(); ctx.moveTo(cx - 23, cy - 2); ctx.lineTo(cx - 4, cy - 12); ctx.lineTo(cx + 15, cy - 12); ctx.lineTo(cx + 23, cy - 3); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#3a3f47'; ctx.fillRect(cx - 37, cy + 7, 74, 3);
+  ctx.fillStyle = '#eef3ff'; ctx.fillRect(cx + 31, cy + 1, 6, 2);   // 전조등
+  ctx.fillStyle = '#ff5a4d'; ctx.fillRect(cx - 37, cy + 2, 4, 2);   // 후미등
+  ctx.fillStyle = '#15171c';
+  for (const wx of [cx - 22, cx + 23]) {
+    ctx.beginPath(); ctx.arc(wx, cy + 10, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#6b7079'; ctx.beginPath(); ctx.arc(wx, cy + 10, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#15171c';
+  }
+}
+function drawTaxi(cx, cy) {                      // NY 옐로 캡
+  shadow(cx, cy + 15, 66, 7);
+  ctx.fillStyle = '#f7c948'; ctx.fillRect(cx - 32, cy - 6, 64, 15);          // 차체
+  ctx.fillStyle = '#f7c948'; ctx.fillRect(cx - 20, cy - 14, 40, 9);          // 캐빈
+  ctx.fillStyle = '#ffd95e'; ctx.fillRect(cx - 32, cy - 6, 64, 2);
+  ctx.fillStyle = '#bfe3f0'; ctx.fillRect(cx - 17, cy - 12, 14, 6); ctx.fillRect(cx + 3, cy - 12, 14, 6);  // 창
+  ctx.fillStyle = '#1d1f24';                    // 체커 띠
+  for (let i = 0; i < 10; i++) { if (i % 2) ctx.fillRect(cx - 30 + i * 6, cy + 1, 6, 3); }
+  ctx.fillStyle = '#1d1f24'; ctx.fillRect(cx - 6, cy - 19, 12, 4);           // TAXI 사인
+  ctx.fillStyle = '#f7c948'; ctx.fillRect(cx - 4, cy - 18, 8, 2);
+  ctx.fillStyle = '#fff'; ctx.fillRect(cx + 28, cy - 3, 4, 3);               // 전조등
+  ctx.fillStyle = '#15171c';
+  for (const wx of [cx - 20, cx + 21]) { ctx.beginPath(); ctx.arc(wx, cy + 10, 6, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#9aa0a8'; ctx.beginPath(); ctx.arc(wx, cy + 10, 2.5, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#15171c'; }
+}
+function drawRocket(cx, cy) {                    // 실리콘밸리 — 스타트업 로켓
+  const flick = Math.floor(lastT / 120) % 2;
+  shadow(cx, cy + 22, 34, 5);
+  ctx.fillStyle = '#f5f7fa'; ctx.fillRect(cx - 9, cy - 18, 18, 34);          // 동체
+  ctx.fillStyle = '#dde3ea'; ctx.fillRect(cx + 4, cy - 18, 5, 34);
+  ctx.fillStyle = '#e0554a'; ctx.beginPath(); ctx.moveTo(cx - 9, cy - 18); ctx.lineTo(cx + 9, cy - 18); ctx.lineTo(cx, cy - 32); ctx.closePath(); ctx.fill();  // 노즈콘
+  ctx.fillStyle = '#3b82f6'; ctx.beginPath(); ctx.arc(cx, cy - 6, 4, 0, Math.PI * 2); ctx.fill();  // 창
+  ctx.fillStyle = '#cfe3f0'; ctx.beginPath(); ctx.arc(cx - 1, cy - 7, 1.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#e0554a';                    // 핀
+  ctx.beginPath(); ctx.moveTo(cx - 9, cy + 6); ctx.lineTo(cx - 18, cy + 16); ctx.lineTo(cx - 9, cy + 16); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx + 9, cy + 6); ctx.lineTo(cx + 18, cy + 16); ctx.lineTo(cx + 9, cy + 16); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = flick ? '#f59e0b' : '#fbbf24';                            // 화염
+  ctx.beginPath(); ctx.moveTo(cx - 6, cy + 16); ctx.lineTo(cx + 6, cy + 16); ctx.lineTo(cx, cy + 16 + (flick ? 12 : 8)); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#fde68a'; ctx.beginPath(); ctx.moveTo(cx - 3, cy + 16); ctx.lineTo(cx + 3, cy + 16); ctx.lineTo(cx, cy + 16 + (flick ? 6 : 4)); ctx.closePath(); ctx.fill();
+}
+function drawArcade(cx, cy) {                    // 레트로 — 아케이드 캐비닛
+  shadow(cx, cy + 22, 38, 5);
+  ctx.fillStyle = '#16231a'; ctx.fillRect(cx - 17, cy - 22, 34, 44);        // 캐비닛
+  ctx.fillStyle = '#0f1a12'; ctx.fillRect(cx - 17, cy - 22, 34, 2);
+  ctx.fillStyle = '#2fb04c'; ctx.fillRect(cx - 15, cy - 20, 30, 4);         // 마퀴
+  ctx.fillStyle = '#020a02'; ctx.fillRect(cx - 13, cy - 13, 26, 16);        // 스크린
+  ctx.fillStyle = '#4cd069';
+  for (let i = 0; i < 4; i++) ctx.fillRect(cx - 11, cy - 11 + i * 3, 4 + ((i * 7 + Math.floor(lastT / 300)) % 18), 1);  // 스캔라인
+  ctx.fillStyle = '#1f5f1f'; ctx.fillRect(cx - 15, cy + 5, 30, 7);          // 컨트롤 패널
+  ctx.fillStyle = '#e0554a'; ctx.beginPath(); ctx.arc(cx - 7, cy + 8, 2, 0, Math.PI * 2); ctx.fill();  // 버튼
+  ctx.fillStyle = '#3b82f6'; ctx.beginPath(); ctx.arc(cx, cy + 8, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#f59e0b'; ctx.beginPath(); ctx.arc(cx + 7, cy + 8, 2, 0, Math.PI * 2); ctx.fill();
+}
+function drawMascot(cx, cy, body, eye) {        // 마스코트 로봇 (OpenAI/Claude 색만 다름)
+  const bob = Math.round(Math.sin(lastT / 500) * 1.5);
+  cy += bob;
+  shadow(cx, cy + 22, 30, 5);
+  ctx.fillStyle = body; ctx.fillRect(cx - 12, cy + 2, 24, 18);              // 몸통
+  ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fillRect(cx - 12, cy + 2, 24, 2);
+  ctx.fillStyle = body; ctx.fillRect(cx - 13, cy - 16, 26, 18);            // 머리
+  ctx.fillStyle = '#0f1115'; ctx.fillRect(cx - 9, cy - 11, 18, 9);         // 페이스 스크린
+  ctx.fillStyle = eye;                                                      // 눈(글로우)
+  const blink = Math.floor(lastT / 2400) % 8 === 0;
+  if (blink) { ctx.fillRect(cx - 6, cy - 6, 4, 1); ctx.fillRect(cx + 2, cy - 6, 4, 1); }
+  else { ctx.fillRect(cx - 6, cy - 8, 4, 4); ctx.fillRect(cx + 2, cy - 8, 4, 4); }
+  ctx.fillStyle = '#9aa0a8'; ctx.fillRect(cx - 1, cy - 22, 2, 6);          // 안테나
+  ctx.fillStyle = eye; ctx.beginPath(); ctx.arc(cx, cy - 23, 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = body; ctx.fillRect(cx - 16, cy + 5, 4, 9); ctx.fillRect(cx + 12, cy + 5, 4, 9);  // 팔
+}
+function drawFireplace(cx, cy) {                // 웜 — 벽난로
+  const f = Math.floor(lastT / 160) % 2;
+  shadow(cx, cy + 20, 44, 5);
+  ctx.fillStyle = C.oakEdge; ctx.fillRect(cx - 22, cy - 18, 44, 38);       // 벽돌 프레임
+  ctx.fillStyle = C.oak;
+  for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) ctx.fillRect(cx - 20 + c * 9 + (r % 2 ? 4 : 0), cy - 16 + r * 7, 8, 6);
+  ctx.fillStyle = '#1a120c'; ctx.fillRect(cx - 14, cy - 6, 28, 24);        // 화구
+  ctx.fillStyle = '#b5502a'; ctx.fillRect(cx - 12, cy + 12, 24, 6);        // 장작
+  ctx.fillStyle = f ? '#f59e0b' : '#fb923c';                              // 불꽃
+  ctx.beginPath(); ctx.moveTo(cx - 8, cy + 14); ctx.lineTo(cx + 8, cy + 14); ctx.lineTo(cx, cy - 4 - (f ? 3 : 0)); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#fde68a'; ctx.beginPath(); ctx.moveTo(cx - 4, cy + 14); ctx.lineTo(cx + 4, cy + 14); ctx.lineTo(cx, cy + 2 + (f ? 0 : 2)); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = C.oakHi; ctx.fillRect(cx - 24, cy - 20, 48, 3);          // 맨틀
+}
+function drawScooter(cx, cy) {                  // 서울 — 배달 스쿠터
+  shadow(cx, cy + 14, 50, 6);
+  ctx.fillStyle = '#e0554a'; ctx.fillRect(cx - 6, cy - 16, 18, 16);        // 배달통
+  ctx.fillStyle = '#fff'; ctx.fillRect(cx - 3, cy - 12, 12, 8);            // 통 라벨
+  ctx.fillStyle = '#e0554a'; ctx.fillRect(cx - 1, cy - 10, 8, 4);
+  ctx.fillStyle = '#3b82f6'; ctx.fillRect(cx - 14, cy - 2, 26, 8);         // 차체
+  ctx.fillStyle = '#5b9bf8'; ctx.fillRect(cx - 14, cy - 2, 26, 2);
+  ctx.fillStyle = '#3a3f47'; ctx.fillRect(cx + 10, cy - 12, 3, 12);        // 핸들
+  ctx.fillStyle = '#1d1f24'; ctx.fillRect(cx + 9, cy - 13, 7, 2);
+  ctx.fillStyle = '#fde68a'; ctx.fillRect(cx + 13, cy - 1, 3, 3);          // 헤드라이트
+  ctx.fillStyle = '#15171c';
+  for (const wx of [cx - 12, cx + 12]) { ctx.beginPath(); ctx.arc(wx, cy + 8, 6, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#6b7079'; ctx.beginPath(); ctx.arc(wx, cy + 8, 2.5, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#15171c'; }
+}
+function drawWinLogo(cx, cy) {                  // MS — 윈도우 로고 모놀리스
+  shadow(cx, cy + 22, 34, 5);
+  ctx.fillStyle = '#e8eaee'; ctx.fillRect(cx - 13, cy - 22, 26, 44);       // 스탠드 패널
+  ctx.fillStyle = '#c8ccd2'; ctx.fillRect(cx - 13, cy + 18, 26, 4);
+  const q = [['#F25022', -10, -16], ['#7FBA00', 1, -16], ['#00A4EF', -10, -5], ['#FFB900', 1, -5]];
+  for (const [col, dx, dy] of q) { ctx.fillStyle = col; ctx.fillRect(cx + dx, cy + dy, 9, 9); }
+  ctx.fillStyle = '#9aa0a8'; ctx.fillRect(cx - 9, cy + 8, 18, 8);          // 받침 그림자칸
+}
+function drawNeonSign(cx, cy) {                 // 다크 — 네온 사인 "OPEN 24"
+  const on = Math.floor(lastT / 700) % 5 !== 0;
+  ctx.fillStyle = '#0c0f16'; ctx.fillRect(cx - 26, cy - 20, 52, 34);       // 백패널
+  ctx.fillStyle = '#0a0d13'; ctx.fillRect(cx - 26, cy - 20, 52, 2);
+  const neon = on ? '#ff3b6b' : '#5a1f30', neon2 = on ? '#22d3ee' : '#15464d';
+  if (on) { ctx.shadowColor = '#ff3b6b'; ctx.shadowBlur = 8; }
+  ctx.strokeStyle = neon; ctx.lineWidth = 2;
+  ctx.strokeRect(cx - 20, cy - 14, 40, 12);                                // OPEN 박스
+  ctx.fillStyle = neon; ctx.fillRect(cx - 16, cy - 11, 3, 6); ctx.fillRect(cx - 9, cy - 11, 3, 6); ctx.fillRect(cx - 2, cy - 11, 3, 6); ctx.fillRect(cx + 5, cy - 11, 3, 6);
+  ctx.shadowBlur = 0;
+  if (on) { ctx.shadowColor = '#22d3ee'; ctx.shadowBlur = 8; }
+  ctx.fillStyle = neon2; ctx.fillRect(cx - 8, cy + 2, 16, 8);              // 24 칩
+  ctx.shadowBlur = 0;
+}
+function drawGlassCube(cx, cy) {                // 애플 — 유리 큐브(부유 디바이스)
+  const bob = Math.round(Math.sin(lastT / 600) * 2);
+  shadow(cx, cy + 20, 40, 6);
+  ctx.fillStyle = 'rgba(180,210,235,.28)'; ctx.fillRect(cx - 20, cy - 18, 40, 38);   // 유리
+  ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 1.5; ctx.strokeRect(cx - 20, cy - 18, 40, 38);
+  ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.fillRect(cx - 17, cy - 15, 6, 32);     // 반사
+  ctx.fillStyle = '#f8f9fa'; ctx.fillRect(cx - 9, cy - 4 + bob, 18, 12);             // 부유 디바이스
+  ctx.fillStyle = '#1d1f24'; ctx.fillRect(cx - 7, cy - 2 + bob, 14, 8);
+  ctx.fillStyle = '#3b82f6'; ctx.fillRect(cx - 5, cy + bob, 10, 4);
+}
+function drawContrastSculpture(cx, cy) {        // 하이콘트라스트 — 흑백 구체 조형
+  shadow(cx, cy + 18, 32, 5);
+  ctx.fillStyle = '#0b0e16'; ctx.beginPath(); ctx.arc(cx, cy, 18, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  for (let i = 0; i < 8; i++) { if (i % 2) { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, 18, i * Math.PI / 4, (i + 1) * Math.PI / 4); ctx.closePath(); ctx.fill(); } }
+  ctx.fillStyle = '#EF4444'; ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fill();  // 레드 포인트
+  ctx.fillStyle = '#0b0e16'; ctx.fillRect(cx - 4, cy + 16, 8, 6);          // 받침
+}
+// 테마 키 → 히어로 렌더 (cx, cy 중심). 미정 테마는 히어로 없음.
+const HERO = {
+  tesla: drawTeslaCar, newyork: drawTaxi, svalley: drawRocket, terminal: drawArcade,
+  openai: (cx, cy) => drawMascot(cx, cy, '#10A37F', '#5fe6c4'),
+  claude: (cx, cy) => drawMascot(cx, cy, '#cc6a44', '#ffd9a8'),
+  warm: drawFireplace, seoul: drawScooter, microsoft: drawWinLogo,
+  dark: drawNeonSign, apple: drawGlassCube, contrast: drawContrastSculpture,
+};
+
 function drawCorridorDecor(layout) {
   ctx.setTransform(S, 0, 0, S, 0, 0);
   const { W, podRows, workY } = layout;
@@ -2371,9 +2528,9 @@ function drawEmptySlotFloor(px, py) {
 // 빈 슬롯 가구: 라운지 비네트 (자유 배치의 빈 공간 채움) — 러그 위에 그림
 function drawEmptySlot(px, py, idx) {
   ctx.setTransform(S, 0, 0, S, 0, 0);
+  const cx = px + POD_W / 2, cy = py + 34;
   const h = hash('empty' + idx);
   const v = h % 5;
-  const cx = px + POD_W / 2, cy = py + 34;
   if (v === 0) {                       // 공용 라운지
     drawSofa(cx - 26, cy - 2, 28);
     drawCoffeeTable(cx - 6, cy + 16);
@@ -2532,8 +2689,17 @@ function frame(t) {
   // ── 데코·가구 패스 — 러그 위에 ──
   drawCorridorDecor(layout);
   drawPerimeterDecor(layout);
+  // 테마 히어로 오브젝트: 가장 중앙(수평)에 가까운 빈 슬롯에 큼직하게 배치(쇼피스 가시성↑)
+  const heroFn = HERO[activeTheme];
+  let heroIdx = -1;
+  if (heroFn && layout.emptySlots.length) {
+    const cxF = layout.W / 2; let best = Infinity;
+    layout.emptySlots.forEach((s, i) => { const d = Math.abs(s.x + POD_W / 2 - cxF); if (d < best) { best = d; heroIdx = i; } });
+  }
   for (let e = 0; e < layout.emptySlots.length; e++) {
-    drawEmptySlot(layout.emptySlots[e].x, layout.emptySlots[e].y, e);
+    const s = layout.emptySlots[e];
+    if (e === heroIdx) { ctx.setTransform(S, 0, 0, S, 0, 0); heroFn(s.x + POD_W / 2, s.y + 46); }
+    else drawEmptySlot(s.x, s.y, e);
   }
 
   tickWalkers(vis);               // 보행 로직 갱신(그리기는 아래 깊이정렬에서)
