@@ -2757,11 +2757,31 @@ function frame(t) {
 
 // ---------- 플레이어 아바타 (방향키 조작 + 세션에게 말 걸기) ----------
 const player = { x: 0, y: 0, facing: 'down', spawned: false, near: null };
-const keys = { up: false, down: false, left: false, right: false };
+const keys = { up: false, down: false, left: false, right: false, sprint: false };
 let talking = false;                 // 채팅 입력 중 → 이동 정지
 let talkTarget = null;
 const PLAYER_LOOK = { skin: '#ffdbac', hair: '#1f1f24', hairHi: '#3a3a42', shirt: '#e84a8a', deskKind: 0, hairStyle: 3, glasses: false, headphone: false, collar: true, phase: 0 };
-const PLAYER_SPEED = 0.08;           // 논리px/ms
+const PLAYER_SPEED = 0.08;           // 기준 논리px/ms (속도 설정 배수가 곱해짐)
+// 이동 속도 프리셋 — 설정에서 선택, localStorage('office.speed') 영속. Shift=일시 질주(×1.6)
+const SPEEDS = [
+  { key: 'stroll', label: '🚶 산책', mul: 0.6 },
+  { key: 'normal', label: '🚶‍♂️ 보통', mul: 1.0 },
+  { key: 'fast', label: '🏃 빠름', mul: 1.8 },
+  { key: 'turbo', label: '⚡ 질주', mul: 3.0 },
+];
+function resolveSpeed() {
+  try { const k = localStorage.getItem('office.speed'); const f = SPEEDS.find((s) => s.key === k); if (f) return f; } catch (e) { /* */ }
+  return SPEEDS[1];
+}
+let speedSetting = resolveSpeed();
+function setSpeed(key) {
+  const f = SPEEDS.find((s) => s.key === key);
+  if (!f) return;
+  speedSetting = f;
+  try { localStorage.setItem('office.speed', key); } catch (e) { /* */ }
+  const sel = document.getElementById('speed-select');
+  if (sel && sel.value !== key) sel.value = key;
+}
 
 function spawnPlayer() {
   const cx0 = floorW / 2, cy0 = floorH - 90;
@@ -2785,7 +2805,8 @@ function tickPlayer(dt) {
   if (!dx && !dy) return;
   const len = Math.hypot(dx, dy) || 1; dx /= len; dy /= len;
   player.facing = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down');
-  let rem = Math.min(PLAYER_SPEED * dt, 7);
+  const spd = PLAYER_SPEED * speedSetting.mul * (keys.sprint ? 1.6 : 1);
+  let rem = Math.min(spd * dt, 14);    // 프레임당 상한(긴 프레임 점프 방지; 서브스텝이 관통 막음)
   while (rem > 0.01) {                 // 서브스텝 충돌(벽 관통 방지)
     const s = Math.min(1.2, rem); rem -= s;
     if (!blocked(player.x + dx * s, player.y)) player.x += dx * s;
@@ -2872,6 +2893,7 @@ function initPlayerControls() {
       case 'ArrowLeft': case 'a': case 'A': keys.left = true; break;
       case 'ArrowRight': case 'd': case 'D': keys.right = true; break;
       case 'Enter': case ' ': if (player.near) openTalk(player.near); break;
+      case 'Shift': keys.sprint = true; used = false; break;   // 누르는 동안 일시 질주
       default: used = false;
     }
     if (used) e.preventDefault();
@@ -2882,8 +2904,17 @@ function initPlayerControls() {
       case 'ArrowDown': case 's': case 'S': keys.down = false; break;
       case 'ArrowLeft': case 'a': case 'A': keys.left = false; break;
       case 'ArrowRight': case 'd': case 'D': keys.right = false; break;
+      case 'Shift': keys.sprint = false; break;
     }
   });
+  // 속도 설정 드롭다운
+  const sp = document.getElementById('speed-select');
+  if (sp) {
+    sp.innerHTML = '';
+    for (const s of SPEEDS) { const o = document.createElement('option'); o.value = s.key; o.textContent = s.label; sp.appendChild(o); }
+    sp.value = speedSetting.key;
+    sp.addEventListener('change', (e) => setSpeed(e.target.value));
+  }
   const inp = document.getElementById('talk-input');
   if (inp) inp.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); sendTalk(); }
