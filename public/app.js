@@ -2822,10 +2822,16 @@ function tickPlayer(dt) {
   player.facing = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down');
   const spd = PLAYER_SPEED * speedSetting.mul * (keys.sprint ? 1.6 : 1);
   let rem = Math.min(spd * dt, 14);    // 프레임당 상한(긴 프레임 점프 방지; 서브스텝이 관통 막음)
+  // 갇힘 탈출: 레이아웃 재계산으로 책상/가구가 현재 위치를 덮으면 주변이 모두 막혀 못 나옴.
+  // 현재 위치가 막혀 있으면 충돌을 무시하고 요청 방향으로 자유 이동 → 빠져나오면 충돌 복구.
+  const escaping = blocked(player.x, player.y);
   while (rem > 0.01) {                 // 서브스텝 충돌(벽 관통 방지)
     const s = Math.min(1.2, rem); rem -= s;
-    if (!blocked(player.x + dx * s, player.y)) player.x += dx * s;
-    if (!blocked(player.x, player.y + dy * s)) player.y += dy * s;
+    if (escaping) { player.x += dx * s; player.y += dy * s; }   // 자유 이동(탈출)
+    else {
+      if (!blocked(player.x + dx * s, player.y)) player.x += dx * s;
+      if (!blocked(player.x, player.y + dy * s)) player.y += dy * s;
+    }
   }
   ensurePlayerVisible();               // 이동분을 화면 안으로 따라오게
 }
