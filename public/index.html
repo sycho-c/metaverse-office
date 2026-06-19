@@ -143,6 +143,36 @@
   }
   .talk-btn.primary { background: var(--primary-500); border-color: var(--primary-500); color: #fff; }
   .talk-btn:hover { filter: brightness(.97); }
+  /* 설정 버튼 + 패널 */
+  .settings-btn {
+    font: inherit; font-size: 12px; font-weight: 600; color: var(--secondary);
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 999px; padding: 5px 12px; cursor: pointer; outline: none;
+  }
+  .settings-btn:hover { border-color: var(--dim); }
+  .settings-ov {
+    position: fixed; inset: 0; z-index: 60;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(10,12,18,.45); backdrop-filter: blur(3px);
+  }
+  .settings-card {
+    width: min(440px, 90vw); background: var(--panel); color: var(--text);
+    border: 1px solid var(--line); border-radius: var(--r-lg);
+    box-shadow: var(--sh-lg); padding: 18px 18px 16px;
+    display: flex; flex-direction: column; gap: 14px;
+    animation: talk-in .18s ease;
+  }
+  .settings-head { font-size: 16px; font-weight: 700; }
+  .settings-head .settings-hint { font-size: 11px; font-weight: 500; color: var(--dim); margin-left: 6px; }
+  .set-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .set-label { font-size: 14px; font-weight: 600; color: var(--secondary); }
+  .set-row .theme-sel { min-width: 160px; }
+  .settings-foot { font-size: 11px; color: var(--dim); line-height: 1.5; border-top: 1px solid var(--line); padding-top: 10px; }
+  kbd {
+    font: inherit; font-size: .85em; font-weight: 700; background: var(--panel2);
+    border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; color: var(--secondary);
+  }
+  .controls-hint kbd { background: rgba(255,255,255,.18); border: none; color: #fff; }
   canvas#office {
     image-rendering: pixelated;
     border-radius: 10px;
@@ -241,8 +271,7 @@
       <span class="hu-cost" id="ucost"></span>
       <span class="hu-reset" id="u5reset" hidden></span><span class="hu-reset" id="uwreset" hidden></span>
     </div>
-    <select id="speed-select" class="theme-sel" title="내 캐릭터 이동 속도"></select>
-    <select id="theme-select" class="theme-sel" title="테마 선택"></select>
+    <button id="settings-btn" class="settings-btn" type="button" title="설정 ( , )">⚙ 설정</button>
     <label class="toggle"><input type="checkbox" id="hide-done" />완료 숨기기</label>
     <span id="conn">연결 중…</span>
   </header>
@@ -254,7 +283,16 @@
     </aside>
   </main>
   <div id="toasts"></div>
-  <div class="controls-hint">🎮 <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> 이동 · 세션에 다가가 <kbd>Enter</kbd> 말 걸기</div>
+  <div class="controls-hint">🎮 <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> 이동 · <kbd>Enter</kbd> 말 걸기 · <kbd>,</kbd> 설정</div>
+  <div id="settings" class="settings-ov" style="display:none">
+    <div class="settings-card">
+      <div class="settings-head">⚙ 설정 <span class="settings-hint"><kbd>,</kbd> / <kbd>Esc</kbd> 닫기</span></div>
+      <!-- 설정 추가 시: .set-row 한 줄 추가 (라벨 + 컨트롤) -->
+      <div class="set-row"><span class="set-label">테마</span><select id="theme-select" class="theme-sel" title="테마"></select></div>
+      <div class="set-row"><span class="set-label">이동 속도</span><select id="speed-select" class="theme-sel" title="내 캐릭터 이동 속도"></select></div>
+      <div class="settings-foot">🎮 방향키/WASD 이동 · 세션에 다가가 <kbd>Enter</kbd> 말 걸기 · <kbd>Shift</kbd> 일시 질주</div>
+    </div>
+  </div>
   <div id="talk" class="talk-ov" style="display:none">
     <div class="talk-card">
       <div class="talk-head">💬 <span class="talk-to"></span> 에게 말 걸기 <span class="talk-hint">via btw</span></div>

@@ -2760,6 +2760,7 @@ const player = { x: 0, y: 0, facing: 'down', spawned: false, near: null };
 const keys = { up: false, down: false, left: false, right: false, sprint: false };
 let talking = false;                 // 채팅 입력 중 → 이동 정지
 let talkTarget = null;
+let settingsOpen = false;            // 설정 패널 열림 → 이동 정지
 const PLAYER_LOOK = { skin: '#ffdbac', hair: '#1f1f24', hairHi: '#3a3a42', shirt: '#e84a8a', deskKind: 0, hairStyle: 3, glasses: false, headphone: false, collar: true, phase: 0 };
 const PLAYER_SPEED = 0.08;           // 기준 논리px/ms (속도 설정 배수가 곱해짐)
 // 이동 속도 프리셋 — 설정에서 선택, localStorage('office.speed') 영속. Shift=일시 질주(×1.6)
@@ -2882,10 +2883,27 @@ async function sendTalk() {
     toastMsg('전송 실패 (네트워크)', false);
   }
 }
+// 설정 패널 — , 키 또는 헤더 ⚙ 버튼으로 토글(Mac 기본 Cmd+,와 충돌 없음). 설정 행은 index.html .set-row 추가.
+function openSettings() {
+  settingsOpen = true;
+  keys.up = keys.down = keys.left = keys.right = keys.sprint = false;
+  const ov = document.getElementById('settings'); if (ov) ov.style.display = 'flex';
+}
+function closeSettings() {
+  settingsOpen = false;
+  const ov = document.getElementById('settings'); if (ov) ov.style.display = 'none';
+}
 function isTyping(el) { return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT'); }
 function initPlayerControls() {
   window.addEventListener('keydown', (e) => {
-    if (isTyping(document.activeElement)) return;   // 입력창 포커스 중엔 이동 차단
+    if (isTyping(document.activeElement)) {                       // 입력/셀렉트 포커스: 이동 차단
+      if (e.key === 'Escape' && settingsOpen) closeSettings();    // 설정 select 포커스 중 Esc 닫기
+      return;
+    }
+    if (settingsOpen) {                                           // 설정 열림 → 닫기 키만, 이동/말걸기 차단
+      if (e.key === ',' || e.key === 'Escape') { e.preventDefault(); closeSettings(); }
+      return;
+    }
     let used = true;
     switch (e.key) {
       case 'ArrowUp': case 'w': case 'W': keys.up = true; break;
@@ -2893,7 +2911,8 @@ function initPlayerControls() {
       case 'ArrowLeft': case 'a': case 'A': keys.left = true; break;
       case 'ArrowRight': case 'd': case 'D': keys.right = true; break;
       case 'Enter': case ' ': if (player.near) openTalk(player.near); break;
-      case 'Shift': keys.sprint = true; used = false; break;   // 누르는 동안 일시 질주
+      case ',': openSettings(); break;                            // 설정 열기
+      case 'Shift': keys.sprint = true; used = false; break;      // 누르는 동안 일시 질주
       default: used = false;
     }
     if (used) e.preventDefault();
@@ -2925,6 +2944,10 @@ function initPlayerControls() {
   if (send) send.addEventListener('click', sendTalk);
   const cancel = document.getElementById('talk-cancel');
   if (cancel) cancel.addEventListener('click', closeTalk);
+  const setBtn = document.getElementById('settings-btn');
+  if (setBtn) setBtn.addEventListener('click', () => (settingsOpen ? closeSettings() : openSettings()));
+  const setOv = document.getElementById('settings');
+  if (setOv) setOv.addEventListener('mousedown', (e) => { if (e.target === setOv) closeSettings(); });  // 배경 클릭 닫기
 }
 initPlayerControls();
 
