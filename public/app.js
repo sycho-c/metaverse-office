@@ -2716,6 +2716,8 @@ function frame(t) {
 
   // 깊이정렬: pod를 back(뒷줄+책상)/front(앞줄) 밴드로 쪼개고 보행 캐릭터를 발끝 Y로 섞어 그림
   // → 책상 뒤(위쪽) 캐릭터는 가려지고, 앞(아래쪽)이면 위로. 러그/책상이 캐릭터를 묻는 현상 제거
+  tickPlayer(dtFrame);            // 플레이어(방향키 조작) 이동
+
   const actors = [];
   for (let p = 0; p < layout.pods; p++) {
     const pos = layout.podPos[p], seats = seatMap[p] || [];
@@ -2729,8 +2731,12 @@ function frame(t) {
   for (const n of computeAmbient()) {                // 존 상주 NPC(연구/회의/휴식/집중)
     actors.push({ y: n.y + 17, draw: () => drawAmbientPerson(n, t) });
   }
+  if (player.spawned) actors.push({ y: player.y + 17, draw: () => drawPlayer(t) });
   actors.sort((a, b) => a.y - b.y);
   for (const a of actors) a.draw();
+
+  updatePlayerTarget();           // 근접한 세션 캐릭터 탐색(cellRects 채워진 뒤)
+  drawPlayerHint(t);              // 머리 위 안내(다가가면 'Enter: 말 걸기')
 
   tickSpeech(vis, t);             // 상황별 대사 스케줄
   drawHighlight();
@@ -2748,6 +2754,148 @@ function frame(t) {
   }
   requestAnimationFrame(frame);
 }
+
+// ---------- 플레이어 아바타 (방향키 조작 + 세션에게 말 걸기) ----------
+const player = { x: 0, y: 0, facing: 'down', spawned: false, near: null };
+const keys = { up: false, down: false, left: false, right: false };
+let talking = false;                 // 채팅 입력 중 → 이동 정지
+let talkTarget = null;
+const PLAYER_LOOK = { skin: '#ffdbac', hair: '#1f1f24', hairHi: '#3a3a42', shirt: '#e84a8a', deskKind: 0, hairStyle: 3, glasses: false, headphone: false, collar: true, phase: 0 };
+const PLAYER_SPEED = 0.08;           // 논리px/ms
+
+function spawnPlayer() {
+  const cx0 = floorW / 2, cy0 = floorH - 90;
+  for (let r = 0; r < 240; r += 7) {
+    for (let a = 0; a < 12; a++) {
+      const x = cx0 + Math.cos(a / 12 * Math.PI * 2) * r, y = cy0 + Math.sin(a / 12 * Math.PI * 2) * r;
+      if (x > WALL + 6 && x < floorW - WALL - 6 && y > ROAM_TOP && y < floorH - WALL - 6 && !blocked(x, y)) {
+        player.x = x; player.y = y; player.spawned = true; return;
+      }
+    }
+  }
+  player.x = WALL + 30; player.y = ROAM_TOP + 30; player.spawned = true;
+}
+function tickPlayer(dt) {
+  if (!player.spawned) { if (floorW) spawnPlayer(); return; }
+  player.x = Math.max(WALL + 4, Math.min(floorW - WALL - 4, player.x));   // 레이아웃 변경 대비 클램프
+  player.y = Math.max(TOP_WALL + 6, Math.min(floorH - WALL - 4, player.y));
+  if (talking) return;
+  let dx = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+  let dy = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
+  if (!dx && !dy) return;
+  const len = Math.hypot(dx, dy) || 1; dx /= len; dy /= len;
+  player.facing = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down');
+  let rem = Math.min(PLAYER_SPEED * dt, 7);
+  while (rem > 0.01) {                 // 서브스텝 충돌(벽 관통 방지)
+    const s = Math.min(1.2, rem); rem -= s;
+    if (!blocked(player.x + dx * s, player.y)) player.x += dx * s;
+    if (!blocked(player.x, player.y + dy * s)) player.y += dy * s;
+  }
+}
+function drawPlayer(t) {
+  ctx.setTransform(S, 0, 0, S, 0, 0);
+  const moving = (keys.up || keys.down || keys.left || keys.right) && !talking;
+  drawWalkPerson(player.x, player.y, PLAYER_LOOK, player.facing, t, moving);
+  const cx = Math.round(player.x), ty = Math.round(player.y);   // 머리 위 핀(나)
+  ctx.fillStyle = '#e84a8a'; ctx.fillRect(cx - 1, ty - 10, 2, 4);
+  ctx.beginPath(); ctx.arc(cx, ty - 11, 2.5, 0, Math.PI * 2); ctx.fill();
+}
+function updatePlayerTarget() {        // cellRects(세션 캐릭터 박스)에서 최근접 탐색
+  if (!player.spawned) { player.near = null; return; }
+  let best = null, bd = 30 * 30;
+  for (const c of cellRects) {
+    const d = (c.x + c.w / 2 - player.x) ** 2 + (c.y + c.h / 2 - player.y) ** 2;
+    if (d < bd) { bd = d; best = c.s; }
+  }
+  player.near = best;
+}
+function drawPlayerHint(t) {
+  if (!player.spawned || talking || !player.near) return;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const k = S / DISP;
+  const text = `Enter · ${player.near.name} 에게 말 걸기`;
+  ctx.font = `600 ${11 * k}px -apple-system, "Apple SD Gothic Neo", sans-serif`;
+  const tw = ctx.measureText(text).width, bw = tw + 16 * k, bh = 19 * k;
+  const bx = player.x * S - bw / 2, by = (player.y - 28) * S;
+  ctx.fillStyle = 'rgba(18,20,26,.92)'; roundRect(bx, by, bw, bh, 9 * k);
+  ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, bx + 8 * k, by + bh / 2 + 0.5 * k);
+}
+
+function toastMsg(text, ok) {
+  const el = document.createElement('div');
+  el.className = 'toast ' + (ok ? 'done' : 'stalled');
+  el.textContent = (ok ? '✅ ' : '⚠️ ') + text;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => { el.classList.add('bye'); setTimeout(() => el.remove(), 450); }, 4000);
+}
+function openTalk(s) {
+  talkTarget = s; talking = true;
+  keys.up = keys.down = keys.left = keys.right = false;
+  const ov = document.getElementById('talk');
+  ov.querySelector('.talk-to').textContent = s.name;
+  const inp = document.getElementById('talk-input');
+  inp.value = '';
+  ov.style.display = 'flex';
+  setTimeout(() => inp.focus(), 0);
+}
+function closeTalk() {
+  talking = false; talkTarget = null;
+  const ov = document.getElementById('talk');
+  if (ov) ov.style.display = 'none';
+}
+async function sendTalk() {
+  const inp = document.getElementById('talk-input');
+  const msg = (inp.value || '').trim();
+  const target = talkTarget;
+  if (!msg || !target) { closeTalk(); return; }
+  closeTalk();
+  try {
+    const res = await fetch('/api/talk', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: target.id, message: msg }),
+    });
+    const d = await res.json().catch(() => ({}));
+    toastMsg(d.ok ? `‘${target.name}’에게 전송됨` : `전송 실패: ${d.error || res.status}`, !!d.ok);
+  } catch (e) {
+    toastMsg('전송 실패 (네트워크)', false);
+  }
+}
+function isTyping(el) { return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT'); }
+function initPlayerControls() {
+  window.addEventListener('keydown', (e) => {
+    if (isTyping(document.activeElement)) return;   // 입력창 포커스 중엔 이동 차단
+    let used = true;
+    switch (e.key) {
+      case 'ArrowUp': case 'w': case 'W': keys.up = true; break;
+      case 'ArrowDown': case 's': case 'S': keys.down = true; break;
+      case 'ArrowLeft': case 'a': case 'A': keys.left = true; break;
+      case 'ArrowRight': case 'd': case 'D': keys.right = true; break;
+      case 'Enter': case ' ': if (player.near) openTalk(player.near); break;
+      default: used = false;
+    }
+    if (used) e.preventDefault();
+  });
+  window.addEventListener('keyup', (e) => {
+    switch (e.key) {
+      case 'ArrowUp': case 'w': case 'W': keys.up = false; break;
+      case 'ArrowDown': case 's': case 'S': keys.down = false; break;
+      case 'ArrowLeft': case 'a': case 'A': keys.left = false; break;
+      case 'ArrowRight': case 'd': case 'D': keys.right = false; break;
+    }
+  });
+  const inp = document.getElementById('talk-input');
+  if (inp) inp.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); sendTalk(); }
+    else if (e.key === 'Escape') { e.preventDefault(); closeTalk(); }
+    e.stopPropagation();
+  });
+  const send = document.getElementById('talk-send');
+  if (send) send.addEventListener('click', sendTalk);
+  const cancel = document.getElementById('talk-cancel');
+  if (cancel) cancel.addEventListener('click', closeTalk);
+}
+initPlayerControls();
 
 // ---------- 테마 초기화 + 드롭다운 ----------
 function initThemeUI() {

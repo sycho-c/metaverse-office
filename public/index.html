@@ -99,6 +99,50 @@
   }
   .cstatus.live .cstatus-dot { animation: cstatus-pulse 2s ease-in-out infinite; }
   @keyframes cstatus-pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+  /* 플레이어 조작 힌트 */
+  .controls-hint {
+    position: fixed; left: 24px; bottom: 18px; z-index: 40;
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(20,22,28,.82); color: #fff; backdrop-filter: blur(6px);
+    font-size: 12px; font-weight: 500; padding: 8px 14px; border-radius: 999px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.25); pointer-events: none;
+    transition: opacity .4s;
+  }
+  .controls-hint kbd {
+    font: inherit; font-weight: 700; background: rgba(255,255,255,.18);
+    border-radius: 5px; padding: 1px 6px; margin: 0 1px;
+  }
+  /* 말 걸기 오버레이 */
+  .talk-ov {
+    position: fixed; inset: 0; z-index: 60;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(10,12,18,.45); backdrop-filter: blur(3px);
+  }
+  .talk-card {
+    width: min(520px, 90vw); background: var(--panel); color: var(--text);
+    border: 1px solid var(--line); border-radius: var(--r-lg);
+    box-shadow: var(--sh-lg); padding: 18px 18px 16px;
+    display: flex; flex-direction: column; gap: 12px;
+    animation: talk-in .18s ease;
+  }
+  @keyframes talk-in { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+  .talk-head { font-size: 15px; font-weight: 700; }
+  .talk-head .talk-to { color: var(--primary-700); }
+  .talk-head .talk-hint { font-size: 11px; font-weight: 600; color: var(--dim); margin-left: 4px; }
+  #talk-input {
+    font: inherit; font-size: 15px; color: var(--text);
+    background: var(--panel2); border: 1px solid var(--line);
+    border-radius: var(--r-md); padding: 12px 14px; outline: none; width: 100%;
+  }
+  #talk-input:focus { border-color: var(--primary-500); box-shadow: 0 0 0 3px rgba(59,130,246,.18); }
+  .talk-actions { display: flex; justify-content: flex-end; gap: 8px; }
+  .talk-btn {
+    font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+    border-radius: 999px; padding: 8px 18px; border: 1px solid var(--line);
+    background: var(--panel2); color: var(--secondary);
+  }
+  .talk-btn.primary { background: var(--primary-500); border-color: var(--primary-500); color: #fff; }
+  .talk-btn:hover { filter: brightness(.97); }
   canvas#office {
     image-rendering: pixelated;
     border-radius: 10px;
@@ -209,6 +253,17 @@
     </aside>
   </main>
   <div id="toasts"></div>
+  <div class="controls-hint">🎮 <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> 이동 · 세션에 다가가 <kbd>Enter</kbd> 말 걸기</div>
+  <div id="talk" class="talk-ov" style="display:none">
+    <div class="talk-card">
+      <div class="talk-head">💬 <span class="talk-to"></span> 에게 말 걸기 <span class="talk-hint">via btw</span></div>
+      <input id="talk-input" type="text" maxlength="500" placeholder="메시지를 입력하고 Enter…" autocomplete="off" />
+      <div class="talk-actions">
+        <button id="talk-cancel" class="talk-btn" type="button">취소 (Esc)</button>
+        <button id="talk-send" class="talk-btn primary" type="button">보내기</button>
+      </div>
+    </div>
+  </div>
   <script src="app.js"></script>
 </body>
 </html>

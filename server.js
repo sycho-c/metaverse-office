@@ -276,6 +276,31 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // 세션에게 말 걸기 — 메시지를 해당 잡 폴더 인박스에 적재(안전). 실제 전달(btw)은 이 자리에 연결.
+  if (url.pathname === '/api/talk' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (c) => { body += c; if (body.length > 100000) req.destroy(); });
+    req.on('end', () => {
+      const json = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(obj)); };
+      let d;
+      try { d = JSON.parse(body); } catch (e) { return json(400, { ok: false, error: 'bad json' }); }
+      const id = String(d.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
+      const message = String(d.message || '').slice(0, 2000).trim();
+      if (!id || !message) return json(400, { ok: false, error: 'id/message required' });
+      const dir = path.join(JOBS_DIR, id);
+      if (!fs.existsSync(dir)) return json(404, { ok: false, error: 'unknown session' });
+      let sessionId = null, cwd = null;
+      try { const st = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8')); sessionId = st.sessionId || null; cwd = st.cwd || null; } catch (e) { /* noop */ }
+      try {
+        const rec = { ts: new Date().toISOString(), via: 'office-player', sessionId, cwd, message };
+        fs.appendFileSync(path.join(dir, 'office-inbox.jsonl'), JSON.stringify(rec) + '\n');
+      } catch (e) { return json(500, { ok: false, error: String(e.message) }); }
+      // TODO(btw): 여기서 실제 세션 전달(btw 스킬/명령)로 교체. 현재는 인박스 파일에 적재만.
+      return json(200, { ok: true, id, sessionId, parked: 'office-inbox.jsonl' });
+    });
+    return;
+  }
+
   // 정적 파일
   let file = url.pathname === '/' ? '/index.html' : url.pathname;
   file = path.normalize(file).replace(/^(\.\.[/\\])+/, '');
