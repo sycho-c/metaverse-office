@@ -2784,8 +2784,22 @@ function setSpeed(key) {
   if (sel && sel.value !== key) sel.value = key;
 }
 
+function ensurePlayerVisible() {        // 이동 시 플레이어를 화면 안으로 스크롤(스폰이 화면 밖이어도 보이게)
+  const wrap = document.getElementById('canvas-wrap');
+  if (!wrap || !wrap.clientHeight) return;
+  const mx = 90, my = 90, px = player.x * DISP, py = player.y * DISP;
+  if (px < wrap.scrollLeft + mx) wrap.scrollLeft = px - mx;
+  else if (px > wrap.scrollLeft + wrap.clientWidth - mx) wrap.scrollLeft = px - wrap.clientWidth + mx;
+  if (py < wrap.scrollTop + my) wrap.scrollTop = py - my;
+  else if (py > wrap.scrollTop + wrap.clientHeight - my) wrap.scrollTop = py - wrap.clientHeight + my;
+}
 function spawnPlayer() {
-  const cx0 = floorW / 2, cy0 = floorH - 90;
+  const wrap = document.getElementById('canvas-wrap');
+  let cx0 = floorW / 2, cy0 = floorH - 90;
+  if (wrap && wrap.clientHeight) {       // 현재 보이는 영역 중앙 근처에 스폰
+    cx0 = (wrap.scrollLeft + wrap.clientWidth / 2) / DISP;
+    cy0 = (wrap.scrollTop + wrap.clientHeight / 2) / DISP;
+  }
   for (let r = 0; r < 240; r += 7) {
     for (let a = 0; a < 12; a++) {
       const x = cx0 + Math.cos(a / 12 * Math.PI * 2) * r, y = cy0 + Math.sin(a / 12 * Math.PI * 2) * r;
@@ -2797,10 +2811,10 @@ function spawnPlayer() {
   player.x = WALL + 30; player.y = ROAM_TOP + 30; player.spawned = true;
 }
 function tickPlayer(dt) {
-  if (!player.spawned) { if (floorW) spawnPlayer(); return; }
+  if (!player.spawned) { if (floorW) { spawnPlayer(); ensurePlayerVisible(); } return; }
   player.x = Math.max(WALL + 4, Math.min(floorW - WALL - 4, player.x));   // 레이아웃 변경 대비 클램프
   player.y = Math.max(TOP_WALL + 6, Math.min(floorH - WALL - 4, player.y));
-  if (talking) return;
+  if (talking || settingsOpen) return;
   let dx = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
   let dy = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
   if (!dx && !dy) return;
@@ -2813,6 +2827,7 @@ function tickPlayer(dt) {
     if (!blocked(player.x + dx * s, player.y)) player.x += dx * s;
     if (!blocked(player.x, player.y + dy * s)) player.y += dy * s;
   }
+  ensurePlayerVisible();               // 이동분을 화면 안으로 따라오게
 }
 function drawPlayer(t) {
   ctx.setTransform(S, 0, 0, S, 0, 0);
@@ -2894,37 +2909,55 @@ function closeSettings() {
   const ov = document.getElementById('settings'); if (ov) ov.style.display = 'none';
 }
 function isTyping(el) { return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT'); }
+// 물리 키(e.code) 우선 판정 → 한글 IME 등에서 e.key 가 자모로 바뀌어도 WASD/단축키 동작.
+function keyId(e) {
+  switch (e.code) {
+    case 'ArrowUp': case 'KeyW': return 'up';
+    case 'ArrowDown': case 'KeyS': return 'down';
+    case 'ArrowLeft': case 'KeyA': return 'left';
+    case 'ArrowRight': case 'KeyD': return 'right';
+    case 'Enter': case 'NumpadEnter': case 'Space': return 'talk';
+    case 'Comma': return 'settings';
+    case 'ShiftLeft': case 'ShiftRight': return 'sprint';
+    case 'Escape': return 'esc';
+  }
+  switch (e.key) {                       // e.code 미지원 환경 폴백
+    case 'ArrowUp': return 'up'; case 'ArrowDown': return 'down';
+    case 'ArrowLeft': return 'left'; case 'ArrowRight': return 'right';
+    case 'Enter': case ' ': return 'talk'; case ',': return 'settings';
+    case 'Shift': return 'sprint'; case 'Escape': return 'esc';
+  }
+  return null;
+}
 function initPlayerControls() {
   window.addEventListener('keydown', (e) => {
+    const a = keyId(e);
     if (isTyping(document.activeElement)) {                       // 입력/셀렉트 포커스: 이동 차단
-      if (e.key === 'Escape' && settingsOpen) closeSettings();    // 설정 select 포커스 중 Esc 닫기
+      if (a === 'esc' && settingsOpen) closeSettings();           // 설정 select 포커스 중 Esc 닫기
       return;
     }
-    if (settingsOpen) {                                           // 설정 열림 → 닫기 키만, 이동/말걸기 차단
-      if (e.key === ',' || e.key === 'Escape') { e.preventDefault(); closeSettings(); }
+    if (settingsOpen) {                                           // 설정 열림 → 닫기 키만
+      if (a === 'settings' || a === 'esc') { e.preventDefault(); closeSettings(); }
       return;
     }
-    let used = true;
-    switch (e.key) {
-      case 'ArrowUp': case 'w': case 'W': keys.up = true; break;
-      case 'ArrowDown': case 's': case 'S': keys.down = true; break;
-      case 'ArrowLeft': case 'a': case 'A': keys.left = true; break;
-      case 'ArrowRight': case 'd': case 'D': keys.right = true; break;
-      case 'Enter': case ' ': if (player.near) openTalk(player.near); break;
-      case ',': openSettings(); break;                            // 설정 열기
-      case 'Shift': keys.sprint = true; used = false; break;      // 누르는 동안 일시 질주
-      default: used = false;
-    }
-    if (used) e.preventDefault();
+    if (!a) return;
+    if (a === 'up') keys.up = true;
+    else if (a === 'down') keys.down = true;
+    else if (a === 'left') keys.left = true;
+    else if (a === 'right') keys.right = true;
+    else if (a === 'sprint') { keys.sprint = true; return; }      // Shift 는 preventDefault 안 함
+    else if (a === 'talk') { if (player.near) openTalk(player.near); }
+    else if (a === 'settings') openSettings();
+    else if (a === 'esc') return;
+    e.preventDefault();
   });
   window.addEventListener('keyup', (e) => {
-    switch (e.key) {
-      case 'ArrowUp': case 'w': case 'W': keys.up = false; break;
-      case 'ArrowDown': case 's': case 'S': keys.down = false; break;
-      case 'ArrowLeft': case 'a': case 'A': keys.left = false; break;
-      case 'ArrowRight': case 'd': case 'D': keys.right = false; break;
-      case 'Shift': keys.sprint = false; break;
-    }
+    const a = keyId(e);
+    if (a === 'up') keys.up = false;
+    else if (a === 'down') keys.down = false;
+    else if (a === 'left') keys.left = false;
+    else if (a === 'right') keys.right = false;
+    else if (a === 'sprint') keys.sprint = false;
   });
   // 속도 설정 드롭다운
   const sp = document.getElementById('speed-select');
