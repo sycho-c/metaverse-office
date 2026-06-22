@@ -2918,11 +2918,18 @@ function toastMsg(text, ok) {
 // 명령 실행은 CLI 터미널에서 하므로, 이어가기용 `claude --resume` 명령만 복사 제공.
 let sessionData = null;
 let sessionTimer = null;                      // 패널 열린 동안 라이브 갱신 타이머(주기는 refreshSetting)
+let sessionLimit = 30;                        // 현재 불러올 메시지 수("이전 더 보기"로 증가)
+let loadMoreFlag = false;                     // 직전 로드가 "더 보기"였는지(스크롤 상단 유지용)
+const SESSION_LIMIT_MAX = 200;
 function setBadge(ov, eff) {
   const b = ov.querySelector('.sess-badge');
   const m = STATE_META[eff] || STATE_META.unknown;
   b.className = 'sess-badge ' + eff;
   b.textContent = (m.emoji ? m.emoji + ' ' : '') + m.label;
+}
+function fmtTime(ts) {                         // ISO → "15:42"
+  if (!ts) return '';
+  try { return new Date(ts).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }); } catch (e) { return ''; }
 }
 // 변화 감지용 시그니처(상태·현재작업·메시지 수·마지막 메시지 꼬리)
 function sessionSig(d) {
@@ -2932,7 +2939,7 @@ function sessionSig(d) {
 async function loadSession(s, initial) {
   const ov = document.getElementById('session');
   try {
-    const res = await fetch(`/api/transcript?id=${encodeURIComponent(s.id)}&limit=30`);
+    const res = await fetch(`/api/transcript?id=${encodeURIComponent(s.id)}&limit=${sessionLimit}`);
     const d = await res.json().catch(() => ({}));
     if (!talking || talkTarget !== s) return;          // 이미 닫혔거나 대상 변경
     if (!d.ok) { if (initial) ov.querySelector('.sess-detail').textContent = '불러오기 실패: ' + (d.error || res.status); return; }
@@ -2953,7 +2960,7 @@ async function openTalk(s) {                 // (이름 유지) 세션 패널 �
   ov.querySelector('.sess-cmd').textContent = '';
   ov.style.display = 'flex';
   if (sessionTimer) { clearInterval(sessionTimer); sessionTimer = null; }
-  sessionData = null;
+  sessionData = null; sessionLimit = 30; loadMoreFlag = false;
   await loadSession(s, true);
   applyPanelTimer();                          // refreshSetting 주기로 라이브 갱신 시작(수동이면 미설정)
 }
@@ -2969,17 +2976,35 @@ function renderSession(d) {
     e.textContent = '최근 대화 내용을 찾지 못했습니다.';
     wrap.appendChild(e);
   } else {
+    // 더 오래된 내용이 남아있을 가능성: 요청 한도만큼 꽉 채워 왔고 아직 상한 미만
+    if (d.messages.length >= sessionLimit && sessionLimit < SESSION_LIMIT_MAX) {
+      const more = document.createElement('button');
+      more.type = 'button'; more.className = 'sess-more'; more.textContent = '⬆ 이전 더 보기';
+      more.onclick = () => {
+        sessionLimit = Math.min(SESSION_LIMIT_MAX, sessionLimit + 40);
+        loadMoreFlag = true;
+        if (talkTarget) loadSession(talkTarget, true);
+      };
+      wrap.appendChild(more);
+    }
     const who = { user: '나(사용자)', assistant: 'Claude' };
     for (const m of d.messages) {
       const el = document.createElement('div'); el.className = 'sess-msg ' + m.role;
+      const time = fmtTime(m.ts);
       if (m.role !== 'tool') {
-        const w = document.createElement('span'); w.className = 'who'; w.textContent = who[m.role] || m.role;
+        const w = document.createElement('span'); w.className = 'who';
+        w.textContent = who[m.role] || m.role;
+        if (time) { const tm = document.createElement('span'); tm.className = 'mtime'; tm.textContent = ' · ' + time; w.appendChild(tm); }
         el.appendChild(w);
+        el.appendChild(document.createTextNode(m.text));
+      } else {
+        el.appendChild(document.createTextNode(m.text));
+        if (time) { const tm = document.createElement('span'); tm.className = 'mtime'; tm.textContent = ' · ' + time; el.appendChild(tm); }
       }
-      el.appendChild(document.createTextNode(m.text));
       wrap.appendChild(el);
     }
-    if (pinned) wrap.scrollTop = wrap.scrollHeight;                            // 바닥이었으면 새 내용까지 추적
+    if (loadMoreFlag) { wrap.scrollTop = 0; loadMoreFlag = false; }            // "더 보기" 직후엔 상단(오래된 내용) 노출
+    else if (pinned) wrap.scrollTop = wrap.scrollHeight;                       // 바닥이었으면 새 내용까지 추적
   }
   ov.querySelector('.sess-cmd').textContent = d.resumeCmd || '(세션 ID 없음)';
   sessionData = d;

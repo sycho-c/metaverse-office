@@ -170,6 +170,8 @@ function messagesFromLine(ev) {
       if (x && !isNoiseUserText(x)) out.push({ role: 'user', text: clean(x) });
     }
   }
+  const ts = ev.timestamp || null;            // 메시지별 시각(표시용)
+  for (const m of out) m.ts = ts;
   return out;
 }
 
@@ -353,7 +355,7 @@ const server = http.createServer((req, res) => {
   if (url.pathname === '/api/transcript' && req.method === 'GET') {
     const json = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(obj)); };
     const id = String(url.searchParams.get('id') || '').replace(/[^a-zA-Z0-9_-]/g, '');
-    const limit = Math.min(60, Math.max(5, Number(url.searchParams.get('limit')) || 24));
+    const limit = Math.min(200, Math.max(5, Number(url.searchParams.get('limit')) || 24));
     if (!id) return json(400, { ok: false, error: 'id required' });
     const dir = path.join(JOBS_DIR, id);
     if (!fs.existsSync(dir)) return json(404, { ok: false, error: 'unknown session' });
