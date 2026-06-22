@@ -112,37 +112,41 @@
     font: inherit; font-weight: 700; background: rgba(255,255,255,.18);
     border-radius: 5px; padding: 1px 6px; margin: 0 1px;
   }
-  /* 말 걸기 오버레이 */
-  .talk-ov {
+  /* 세션 내용 보기 오버레이 (읽기 전용) */
+  .sess-ov {
     position: fixed; inset: 0; z-index: 60;
     display: flex; align-items: center; justify-content: center;
     background: rgba(10,12,18,.45); backdrop-filter: blur(3px);
   }
-  .talk-card {
-    width: min(520px, 90vw); background: var(--panel); color: var(--text);
+  .sess-card {
+    width: min(640px, 92vw); max-height: 82vh; background: var(--panel); color: var(--text);
     border: 1px solid var(--line); border-radius: var(--r-lg);
-    box-shadow: var(--sh-lg); padding: 18px 18px 16px;
-    display: flex; flex-direction: column; gap: 12px;
+    box-shadow: var(--sh-lg); padding: 16px 18px 14px;
+    display: flex; flex-direction: column; gap: 10px;
     animation: talk-in .18s ease;
   }
   @keyframes talk-in { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
-  .talk-head { font-size: 15px; font-weight: 700; }
-  .talk-head .talk-to { color: var(--primary-700); }
-  .talk-head .talk-hint { font-size: 11px; font-weight: 600; color: var(--dim); margin-left: 4px; }
-  #talk-input {
-    font: inherit; font-size: 15px; color: var(--text);
-    background: var(--panel2); border: 1px solid var(--line);
-    border-radius: var(--r-md); padding: 12px 14px; outline: none; width: 100%;
-  }
-  #talk-input:focus { border-color: var(--primary-500); box-shadow: 0 0 0 3px rgba(59,130,246,.18); }
-  .talk-actions { display: flex; justify-content: flex-end; gap: 8px; }
-  .talk-btn {
-    font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
-    border-radius: 999px; padding: 8px 18px; border: 1px solid var(--line);
-    background: var(--panel2); color: var(--secondary);
-  }
-  .talk-btn.primary { background: var(--primary-500); border-color: var(--primary-500); color: #fff; }
-  .talk-btn:hover { filter: brightness(.97); }
+  .sess-head { display: flex; align-items: center; gap: 8px; }
+  .sess-head .sess-name { font-size: 15px; font-weight: 700; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sess-badge { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; color: #fff; white-space: nowrap; }
+  .sess-badge.working { background: var(--working); }
+  .sess-badge.done    { background: var(--done); }
+  .sess-badge.blocked { background: var(--blocked); }
+  .sess-badge.stalled { background: var(--stalled); }
+  .sess-x { font: inherit; font-size: 13px; cursor: pointer; border: 1px solid var(--line); background: var(--panel2); color: var(--secondary); border-radius: 999px; padding: 4px 12px; }
+  .sess-x:hover { border-color: var(--dim); }
+  .sess-detail { font-size: 12.5px; color: var(--secondary); line-height: 1.5; background: var(--panel2); border: 1px solid var(--line); border-radius: var(--r-md); padding: 9px 11px; }
+  .sess-msgs { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 2px; }
+  .sess-msg { font-size: 12.5px; line-height: 1.55; border-radius: var(--r-md); padding: 8px 11px; white-space: pre-wrap; word-break: break-word; }
+  .sess-msg.user { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; align-self: flex-end; max-width: 88%; }
+  .sess-msg.assistant { background: var(--panel2); border: 1px solid var(--line); align-self: flex-start; max-width: 92%; }
+  .sess-msg.tool { font-size: 11px; color: var(--dim); align-self: flex-start; padding: 2px 6px; }
+  .sess-msg .who { display: block; font-size: 10px; font-weight: 700; color: var(--dim); margin-bottom: 3px; letter-spacing: .04em; }
+  .sess-empty { font-size: 12.5px; color: var(--dim); text-align: center; padding: 20px; }
+  .sess-foot { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .sess-cmd { flex: 1; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: var(--secondary); background: var(--panel2); border: 1px solid var(--line); border-radius: var(--r-md); padding: 7px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sess-copy { font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; border-radius: 999px; padding: 7px 14px; border: 1px solid var(--primary-500); background: var(--primary-500); color: #fff; white-space: nowrap; }
+  .sess-copy:hover { filter: brightness(.97); }
   /* 설정 버튼 + 패널 */
   .settings-btn {
     font: inherit; font-size: 12px; font-weight: 600; color: var(--secondary);
@@ -290,16 +294,21 @@
       <!-- 설정 추가 시: .set-row 한 줄 추가 (라벨 + 컨트롤) -->
       <div class="set-row"><span class="set-label">테마</span><select id="theme-select" class="theme-sel" title="테마"></select></div>
       <div class="set-row"><span class="set-label">이동 속도</span><select id="speed-select" class="theme-sel" title="내 캐릭터 이동 속도"></select></div>
-      <div class="settings-foot">🎮 방향키/WASD 이동 · 세션에 다가가 <kbd>Enter</kbd> 말 걸기 · <kbd>Shift</kbd> 일시 질주</div>
+      <div class="settings-foot">🎮 방향키/WASD 이동 · 세션에 다가가 <kbd>Enter</kbd> 내용 보기 · <kbd>Shift</kbd> 일시 질주</div>
     </div>
   </div>
-  <div id="talk" class="talk-ov" style="display:none">
-    <div class="talk-card">
-      <div class="talk-head">💬 <span class="talk-to"></span> 에게 말 걸기 <span class="talk-hint">via btw</span></div>
-      <input id="talk-input" type="text" maxlength="500" placeholder="메시지를 입력하고 Enter…" autocomplete="off" />
-      <div class="talk-actions">
-        <button id="talk-cancel" class="talk-btn" type="button">취소 (Esc)</button>
-        <button id="talk-send" class="talk-btn primary" type="button">보내기</button>
+  <div id="session" class="sess-ov" style="display:none">
+    <div class="sess-card">
+      <div class="sess-head">
+        <span class="sess-name"></span>
+        <span class="sess-badge"></span>
+        <button class="sess-x" type="button">닫기 (Esc)</button>
+      </div>
+      <div class="sess-detail"></div>
+      <div class="sess-msgs"></div>
+      <div class="sess-foot">
+        <code class="sess-cmd" title="CLI 터미널에서 이 세션을 이어서 작업"></code>
+        <button class="sess-copy" type="button">복사</button>
       </div>
     </div>
   </div>

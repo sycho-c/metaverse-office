@@ -2856,7 +2856,7 @@ function drawPlayerHint(t) {
   if (!player.spawned || talking || !player.near) return;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   const k = S / DISP;
-  const text = `Enter · ${player.near.name} 에게 말 걸기`;
+  const text = `Enter · ${player.near.name} 내용 보기`;
   ctx.font = `600 ${11 * k}px -apple-system, "Apple SD Gothic Neo", sans-serif`;
   const tw = ctx.measureText(text).width, bw = tw + 16 * k, bh = 19 * k;
   const bx = player.x * S - bw / 2, by = (player.y - 28) * S;
@@ -2872,47 +2872,64 @@ function toastMsg(text, ok) {
   document.getElementById('toasts').appendChild(el);
   setTimeout(() => { el.classList.add('bye'); setTimeout(() => el.remove(), 450); }, 4000);
 }
-function openTalk(s) {
+// 세션 내용 보기(읽기 전용) — 다가가 Enter. 상태/현재작업 + 최근 대화 미리보기.
+// 명령 실행은 CLI 터미널에서 하므로, 이어가기용 `claude --resume` 명령만 복사 제공.
+let sessionData = null;
+function setBadge(ov, eff) {
+  const b = ov.querySelector('.sess-badge');
+  const m = STATE_META[eff] || STATE_META.unknown;
+  b.className = 'sess-badge ' + eff;
+  b.textContent = (m.emoji ? m.emoji + ' ' : '') + m.label;
+}
+async function openTalk(s) {                 // (이름 유지) 세션 패널 열기
   talkTarget = s; talking = true;
-  keys.up = keys.down = keys.left = keys.right = false;
-  const ov = document.getElementById('talk');
-  ov.querySelector('.talk-to').textContent = s.name;
-  const inp = document.getElementById('talk-input');
-  inp.value = '';
+  keys.up = keys.down = keys.left = keys.right = keys.sprint = false;
+  const ov = document.getElementById('session');
+  ov.querySelector('.sess-name').textContent = s.name || '(이름 없음)';
+  setBadge(ov, s.effective || s.state || 'unknown');
+  ov.querySelector('.sess-detail').textContent = '불러오는 중…';
+  ov.querySelector('.sess-msgs').innerHTML = '';
+  ov.querySelector('.sess-cmd').textContent = '';
   ov.style.display = 'flex';
-  setTimeout(() => inp.focus(), 0);
-}
-function closeTalk() {
-  talking = false; talkTarget = null;
-  const ov = document.getElementById('talk');
-  if (ov) ov.style.display = 'none';
-}
-async function sendTalk() {
-  const inp = document.getElementById('talk-input');
-  const msg = (inp.value || '').trim();
-  const target = talkTarget;
-  if (!msg || !target) { closeTalk(); return; }
-  closeTalk();
   try {
-    const res = await fetch('/api/talk', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: target.id, message: msg }),
-    });
+    const res = await fetch(`/api/transcript?id=${encodeURIComponent(s.id)}&limit=30`);
     const d = await res.json().catch(() => ({}));
-    if (!d.ok) { toastMsg(`전송 실패: ${d.error || res.status}`, false); return; }
-    if (d.delivered) {
-      toastMsg(`‘${target.name}’에게 전달됨`, true);
-    } else {
-      const why = {
-        'busy-working': '작업 중이라 대기열에 보류 (완료되면 다시 시도)',
-        'held-blocked': '입력 대기 중이라 보류',
-        'no-session-id': '세션 식별 불가로 보류',
-      }[d.reason] || `보류됨 (${d.reason || d.status})`;
-      toastMsg(`‘${target.name}’ — ${why}`, false);
-    }
+    if (!talking || talkTarget !== s) return;          // 이미 닫혔거나 대상 변경
+    if (!d.ok) { ov.querySelector('.sess-detail').textContent = '불러오기 실패: ' + (d.error || res.status); return; }
+    renderSession(d);
   } catch (e) {
-    toastMsg('전송 실패 (네트워크)', false);
+    ov.querySelector('.sess-detail').textContent = '불러오기 실패 (네트워크)';
   }
+}
+function renderSession(d) {
+  const ov = document.getElementById('session');
+  ov.querySelector('.sess-detail').textContent = d.detail || '(현재 작업 설명 없음)';
+  const wrap = ov.querySelector('.sess-msgs');
+  wrap.innerHTML = '';
+  if (!d.messages || !d.messages.length) {
+    const e = document.createElement('div'); e.className = 'sess-empty';
+    e.textContent = '최근 대화 내용을 찾지 못했습니다.';
+    wrap.appendChild(e);
+  } else {
+    const who = { user: '나(사용자)', assistant: 'Claude' };
+    for (const m of d.messages) {
+      const el = document.createElement('div'); el.className = 'sess-msg ' + m.role;
+      if (m.role !== 'tool') {
+        const w = document.createElement('span'); w.className = 'who'; w.textContent = who[m.role] || m.role;
+        el.appendChild(w);
+      }
+      el.appendChild(document.createTextNode(m.text));
+      wrap.appendChild(el);
+    }
+    wrap.scrollTop = wrap.scrollHeight;
+  }
+  ov.querySelector('.sess-cmd').textContent = d.resumeCmd || '(세션 ID 없음)';
+  sessionData = d;
+}
+function closeTalk() {                        // (이름 유지) 세션 패널 닫기
+  talking = false; talkTarget = null; sessionData = null;
+  const ov = document.getElementById('session');
+  if (ov) ov.style.display = 'none';
 }
 // 설정 패널 — , 키 또는 헤더 ⚙ 버튼으로 토글(Mac 기본 Cmd+,와 충돌 없음). 설정 행은 index.html .set-row 추가.
 function openSettings() {
@@ -2956,6 +2973,10 @@ function initPlayerControls() {
       if (a === 'settings' || a === 'esc') { e.preventDefault(); closeSettings(); }
       return;
     }
+    if (talking) {                                                // 세션 패널 열림 → 닫기 키만(이동 차단)
+      if (a === 'esc' || a === 'talk') { e.preventDefault(); closeTalk(); }
+      return;
+    }
     if (!a) return;
     if (a === 'up') keys.up = true;
     else if (a === 'down') keys.down = true;
@@ -2983,16 +3004,18 @@ function initPlayerControls() {
     sp.value = speedSetting.key;
     sp.addEventListener('change', (e) => setSpeed(e.target.value));
   }
-  const inp = document.getElementById('talk-input');
-  if (inp) inp.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); sendTalk(); }
-    else if (e.key === 'Escape') { e.preventDefault(); closeTalk(); }
-    e.stopPropagation();
+  const sx = document.querySelector('#session .sess-x');
+  if (sx) sx.addEventListener('click', closeTalk);
+  const cp = document.querySelector('#session .sess-copy');
+  if (cp) cp.addEventListener('click', () => {
+    const cmd = (sessionData && sessionData.resumeCmd) || '';
+    if (!cmd) { toastMsg('복사할 명령이 없습니다', false); return; }
+    navigator.clipboard.writeText(cmd)
+      .then(() => toastMsg('이어가기 명령 복사됨 — 터미널에 붙여넣기', true))
+      .catch(() => toastMsg('복사 실패 (클립보드 권한)', false));
   });
-  const send = document.getElementById('talk-send');
-  if (send) send.addEventListener('click', sendTalk);
-  const cancel = document.getElementById('talk-cancel');
-  if (cancel) cancel.addEventListener('click', closeTalk);
+  const sov = document.getElementById('session');
+  if (sov) sov.addEventListener('mousedown', (e) => { if (e.target === sov) closeTalk(); });
   const setBtn = document.getElementById('settings-btn');
   if (setBtn) setBtn.addEventListener('click', () => (settingsOpen ? closeSettings() : openSettings()));
   const setOv = document.getElementById('settings');

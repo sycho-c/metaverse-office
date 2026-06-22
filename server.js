@@ -13,7 +13,6 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { spawn } = require('child_process');
 
 const PORT = Number(process.env.PORT || 4848);
 const STALL_MIN = Number(process.env.STALL_MIN || 5);
@@ -118,6 +117,78 @@ function lastExchange(p, mtime) {
   const out = { mtime, prompt, response };
   promptCache.set(p, out);
   return out;
+}
+
+// ---------- 세션 내용 읽기(읽기 전용 패널용) ----------
+
+// 시스템 주입/노이즈 사용자 메시지 판별 (lastExchange 와 동일 기준)
+function isNoiseUserText(text) {
+  return text[0] === '<' || text.startsWith('API Error') ||
+    text.startsWith('Caveat:') || text.startsWith('[Image #') ||
+    text.startsWith('[Request interrupted') ||
+    text.startsWith('This session is being continued') ||
+    text.startsWith('<local-command');
+}
+
+// 큰 jsonl 의 끝부분만 읽어 메모리 보호 (마지막 partial line 제거)
+function tailRead(p, maxBytes) {
+  const fd = fs.openSync(p, 'r');
+  try {
+    const sz = fs.fstatSync(fd).size;
+    const start = Math.max(0, sz - maxBytes);
+    const len = sz - start;
+    const buf = Buffer.alloc(len);
+    fs.readSync(fd, buf, 0, len, start);
+    let s = buf.toString('utf8');
+    if (start > 0) { const nl = s.indexOf('\n'); if (nl >= 0) s = s.slice(nl + 1); }
+    return s;
+  } finally { fs.closeSync(fd); }
+}
+
+// 한 트랜스크립트 라인에서 표시용 메시지 추출 ([{role, text}])
+function messagesFromLine(ev) {
+  const out = [];
+  const msg = ev.message; if (!msg) return out;
+  const c = msg.content;
+  if (ev.type === 'assistant') {
+    if (typeof c === 'string') { const x = clean(c); if (x) out.push({ role: 'assistant', text: x }); }
+    else if (Array.isArray(c)) {
+      const tools = [];
+      for (const b of c) {
+        if (!b) continue;
+        if (b.type === 'text') { const x = clean(b.text || ''); if (x) out.push({ role: 'assistant', text: x }); }
+        else if (b.type === 'tool_use') tools.push(b.name || 'tool');
+      }
+      if (tools.length) out.push({ role: 'tool', text: '🔧 ' + [...new Set(tools)].join(', ') });
+    }
+  } else if (ev.type === 'user' && !ev.isMeta) {
+    let raw = null;
+    if (typeof c === 'string') raw = c;
+    else if (Array.isArray(c)) { const tb = c.find((b) => b && b.type === 'text'); if (tb) raw = tb.text || ''; }
+    if (raw != null) {
+      const x = raw.trim();
+      if (x && !isNoiseUserText(x)) out.push({ role: 'user', text: clean(x) });
+    }
+  }
+  return out;
+}
+
+// 최근 limit 개의 대화 메시지(사람/AI/툴마커) 추출
+function recentMessages(p, limit) {
+  const text = tailRead(p, 600000);
+  const lines = text.split('\n');
+  const all = [];
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t || t[0] !== '{') continue;
+    let ev; try { ev = JSON.parse(t); } catch (e) { continue; }
+    if (ev.isSidechain) continue;             // 서브에이전트 제외
+    for (const m of messagesFromLine(ev)) {
+      if (m.text.length > 700) m.text = m.text.slice(0, 700) + '…';
+      all.push(m);
+    }
+  }
+  return all.slice(-limit);
 }
 
 function readJobs() {
@@ -277,57 +348,43 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // 세션에게 말 걸기 — 상태 게이트 전달(A안).
-  //  · done(유휴)        → `claude --resume <sessionId> -p "<msg>"` 로 그 세션에 새 턴을 직접 전달
-  //  · working/blocked   → in-flight/held 충돌 위험이라 보류(인박스 적재만). 세션이 done 되면 재시도 가능.
-  // 어떤 경우든 감사용으로 office-inbox.jsonl 에 결과(status)와 함께 기록한다.
-  if (url.pathname === '/api/talk' && req.method === 'POST') {
-    let body = '';
-    req.on('data', (c) => { body += c; if (body.length > 100000) req.destroy(); });
-    req.on('end', () => {
-      const json = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(obj)); };
-      let d;
-      try { d = JSON.parse(body); } catch (e) { return json(400, { ok: false, error: 'bad json' }); }
-      const id = String(d.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
-      const message = String(d.message || '').slice(0, 2000).trim();
-      if (!id || !message) return json(400, { ok: false, error: 'id/message required' });
-      const dir = path.join(JOBS_DIR, id);
-      if (!fs.existsSync(dir)) return json(404, { ok: false, error: 'unknown session' });
-      let sessionId = null, cwd = null, state = null;
-      try { const st = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8')); sessionId = st.sessionId || null; cwd = st.cwd || null; state = st.state || null; } catch (e) { /* noop */ }
+  // 세션 내용 보기(읽기 전용) — 상태/현재 작업 + 최근 대화 미리보기.
+  // 명령 실행은 CLI 터미널에서 하므로, 이어가기용 `claude --resume` 명령만 함께 반환.
+  if (url.pathname === '/api/transcript' && req.method === 'GET') {
+    const json = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(obj)); };
+    const id = String(url.searchParams.get('id') || '').replace(/[^a-zA-Z0-9_-]/g, '');
+    const limit = Math.min(60, Math.max(5, Number(url.searchParams.get('limit')) || 24));
+    if (!id) return json(400, { ok: false, error: 'id required' });
+    const dir = path.join(JOBS_DIR, id);
+    if (!fs.existsSync(dir)) return json(404, { ok: false, error: 'unknown session' });
+    let st;
+    try { st = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8')); } catch (e) { return json(500, { ok: false, error: 'state read failed' }); }
 
-      // 전달 가능 조건: 유휴(done) + sessionId 확보. working/blocked 은 보류.
-      const deliverable = state === 'done' && !!sessionId;
-      let status, delivered = false, reason = null;
-      if (deliverable) {
-        try {
-          const logPath = path.join(dir, 'office-delivery.log');
-          const out = fs.openSync(logPath, 'a');
-          const child = spawn('claude', ['--resume', sessionId, '-p', message], {
-            cwd: cwd && fs.existsSync(cwd) ? cwd : undefined,
-            stdio: ['ignore', out, out],
-            detached: true,
-          });
-          child.on('error', () => { /* claude 미존재 등 — 인박스 기록은 유지 */ });
-          child.unref();
-          delivered = true;
-          status = 'delivered';
-        } catch (e) {
-          status = 'parked';
-          reason = 'spawn-failed: ' + String(e.message);
-        }
-      } else {
-        status = 'parked';
-        reason = !sessionId ? 'no-session-id' : (state === 'working' ? 'busy-working' : (state === 'blocked' ? 'held-blocked' : 'idle-unknown:' + state));
-      }
+    const projectDirs = listProjectDirs();
+    const mtA = transcriptMtimeFor(st.sessionId, projectDirs);
+    const mtB = st.resumeSessionId && st.resumeSessionId !== st.sessionId
+      ? transcriptMtimeFor(st.resumeSessionId, projectDirs) : 0;
+    const bestSid = mtB > mtA ? st.resumeSessionId : st.sessionId;
+    const bestPath = (sidPathCache.get(bestSid) || {}).path;
 
-      try {
-        const rec = { ts: new Date().toISOString(), via: 'office-player', sessionId, cwd, state, message, status, reason };
-        fs.appendFileSync(path.join(dir, 'office-inbox.jsonl'), JSON.stringify(rec) + '\n');
-      } catch (e) { return json(500, { ok: false, error: String(e.message) }); }
-      return json(200, { ok: true, id, sessionId, state, delivered, status, reason });
+    let messages = [], transcriptMtime = 0;
+    if (bestPath) {
+      try { messages = recentMessages(bestPath, limit); transcriptMtime = fs.statSync(bestPath).mtimeMs; } catch (e) { /* noop */ }
+    }
+    const resumeCmd = bestSid ? `claude --resume ${bestSid}` : null;
+    return json(200, {
+      ok: true, id,
+      name: st.name || null,
+      state: st.state || null,
+      detail: st.detail || null,
+      sessionId: bestSid || st.sessionId || null,
+      cwd: st.cwd || st.originCwd || null,
+      tokens: st.tokens != null ? st.tokens : null,
+      updatedAt: st.updatedAt || null,
+      transcriptAt: transcriptMtime ? new Date(transcriptMtime).toISOString() : null,
+      resumeCmd,
+      messages,
     });
-    return;
   }
 
   // 정적 파일
