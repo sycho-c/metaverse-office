@@ -374,6 +374,18 @@ const server = http.createServer((req, res) => {
       try { messages = recentMessages(bestPath, limit); transcriptMtime = fs.statSync(bestPath).mtimeMs; } catch (e) { /* noop */ }
     }
     const resumeCmd = bestSid ? `claude --resume ${bestSid}` : null;
+    // 지표·산출물(필요한 필드만 정제 — 거대 객체 덤프 방지)
+    const inFlight = (st.inFlight && typeof st.inFlight === 'object')
+      ? { tasks: st.inFlight.tasks || 0, queued: st.inFlight.queued || 0, kinds: Array.isArray(st.inFlight.kinds) ? st.inFlight.kinds.slice(0, 4) : [] }
+      : null;
+    const fan = Array.isArray(st.fan)
+      ? st.fan.slice(0, 6).map((f) => ({ kind: f && f.kind || null, label: f && f.label ? String(f.label).slice(0, 80) : null })).filter((f) => f.label)
+      : [];
+    const children = Array.isArray(st.children)
+      ? st.children.slice(0, 12).map((c) => ({ id: c && c.id != null ? String(c.id) : null, kind: c && c.kind || null, href: c && typeof c.href === 'string' ? c.href : null })).filter((c) => c.href)
+      : [];
+    const result = (st.output && typeof st.output === 'object' && typeof st.output.result === 'string')
+      ? st.output.result.slice(0, 600) : null;
     return json(200, {
       ok: true, id,
       name: st.name || null,
@@ -382,8 +394,12 @@ const server = http.createServer((req, res) => {
       sessionId: bestSid || st.sessionId || null,
       cwd: st.cwd || st.originCwd || null,
       tokens: st.tokens != null ? st.tokens : null,
+      tempo: st.tempo || null,
+      intent: typeof st.intent === 'string' ? st.intent.slice(0, 240) : null,
+      createdAt: st.createdAt || null,
       updatedAt: st.updatedAt || null,
       transcriptAt: transcriptMtime ? new Date(transcriptMtime).toISOString() : null,
+      inFlight, fan, children, result,
       resumeCmd,
       messages,
     });

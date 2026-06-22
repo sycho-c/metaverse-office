@@ -139,6 +139,15 @@
   .sess-x { font: inherit; font-size: 13px; cursor: pointer; border: 1px solid var(--line); background: var(--panel2); color: var(--secondary); border-radius: 999px; padding: 4px 12px; }
   .sess-x:hover { border-color: var(--dim); }
   .sess-detail { font-size: 14px; color: var(--secondary); line-height: 1.55; background: var(--panel2); border: 1px solid var(--line); border-radius: var(--r-md); padding: 10px 12px; }
+  .sess-meta { display: flex; flex-direction: column; gap: 6px; }
+  .sess-meta:empty { display: none; }
+  .sess-chips, .sess-links { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .sess-chip { font-size: 11.5px; font-weight: 600; color: var(--secondary); background: var(--panel2); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+  .sess-intent { font-size: 12.5px; color: var(--dim); line-height: 1.5; }
+  .sess-line { font-size: 12.5px; color: var(--secondary); line-height: 1.5; }
+  .sess-line b { font-weight: 700; color: var(--dim); }
+  .sess-link { font-size: 11.5px; font-weight: 600; color: #1d4ed8; text-decoration: none; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+  .sess-link:hover { filter: brightness(.97); }
   .sess-msgs { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 2px; }
   .sess-msg { font-size: 14.5px; line-height: 1.6; border-radius: var(--r-md); padding: 9px 12px; white-space: pre-wrap; word-break: break-word; }
   .sess-msg.user { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; align-self: flex-end; max-width: 88%; }
@@ -316,6 +325,7 @@
         <button class="sess-x" type="button">닫기 (Esc)</button>
       </div>
       <div class="sess-detail"></div>
+      <div class="sess-meta"></div>
       <div class="sess-msgs"></div>
       <div class="sess-foot">
         <code class="sess-cmd" title="CLI 터미널에서 이 세션을 이어서 작업"></code>

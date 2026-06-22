@@ -2997,10 +2997,58 @@ function fmtTime(ts) {                         // ISO → "15:42"
   if (!ts) return '';
   try { return new Date(ts).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }); } catch (e) { return ''; }
 }
+function fmtTokens(n) {                        // 1228318 → "1.2M"
+  if (n == null || isNaN(n)) return null;
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return Math.round(n / 1e3) + 'K';
+  return String(n);
+}
+function fmtElapsed(createdAt) {               // 생성 후 경과 → "2시간"/"15분"/"3일"
+  if (!createdAt) return null;
+  const ms = Date.now() - new Date(createdAt).getTime();
+  if (isNaN(ms) || ms < 0) return null;
+  const m = Math.floor(ms / 60000);
+  if (m < 60) return m + '분';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + '시간';
+  return Math.floor(h / 24) + '일';
+}
+function renderMeta(d) {                        // 지표 칩 + 목표 + 지금 실행 + 산출물 링크
+  const meta = document.getElementById('session').querySelector('.sess-meta');
+  meta.innerHTML = '';
+  const chips = [];
+  const tk = fmtTokens(d.tokens); if (tk) chips.push('🪙 ' + tk + ' tok');
+  const el = fmtElapsed(d.createdAt); if (el) chips.push('⏱ ' + el);
+  if (d.inFlight && d.inFlight.tasks > 0) chips.push('⚙ ' + d.inFlight.tasks + ' 실행' + (d.inFlight.queued ? ` (+${d.inFlight.queued})` : ''));
+  if (chips.length) {
+    const row = document.createElement('div'); row.className = 'sess-chips';
+    for (const c of chips) { const s = document.createElement('span'); s.className = 'sess-chip'; s.textContent = c; row.appendChild(s); }
+    meta.appendChild(row);
+  }
+  if (d.intent) { const i = document.createElement('div'); i.className = 'sess-intent'; i.textContent = '🎯 ' + d.intent; meta.appendChild(i); }
+  if (d.fan && d.fan.length) {
+    const f = document.createElement('div'); f.className = 'sess-line';
+    const b = document.createElement('b'); b.textContent = '⚙ 지금 실행 '; f.appendChild(b);
+    f.appendChild(document.createTextNode(d.fan.map((x) => x.label).join(' · ')));
+    meta.appendChild(f);
+  }
+  if (d.children && d.children.length) {
+    const row = document.createElement('div'); row.className = 'sess-links';
+    const lbl = document.createElement('span'); lbl.className = 'sess-chip'; lbl.textContent = '🔗 산출물'; row.appendChild(lbl);
+    for (const c of d.children) {
+      const a = document.createElement('a'); a.className = 'sess-link'; a.href = c.href; a.target = '_blank'; a.rel = 'noopener';
+      a.textContent = (c.kind === 'pr' ? 'PR #' : (c.kind === 'issue' ? '#' : '')) + (c.id || 'link');
+      row.appendChild(a);
+    }
+    meta.appendChild(row);
+  }
+}
 // 변화 감지용 시그니처(상태·현재작업·메시지 수·마지막 메시지 꼬리)
 function sessionSig(d) {
   const last = d.messages && d.messages.length ? d.messages[d.messages.length - 1].text : '';
-  return (d.state || '') + '|' + (d.detail || '') + '|' + (d.messages ? d.messages.length : 0) + '|' + last.slice(-48);
+  const fanSig = (d.fan || []).map((f) => f.label).join(',');
+  return (d.state || '') + '|' + (d.detail || '') + '|' + (d.messages ? d.messages.length : 0) + '|' +
+    (d.tokens || 0) + '|' + ((d.inFlight && d.inFlight.tasks) || 0) + '|' + ((d.children || []).length) + '|' + fanSig + '|' + last.slice(-48);
 }
 async function loadSession(s, initial) {
   const ov = document.getElementById('session');
@@ -3034,6 +3082,7 @@ function renderSession(d) {
   const ov = document.getElementById('session');
   if (d.state) setBadge(ov, d.state);                                          // 라이브 상태 반영
   ov.querySelector('.sess-detail').textContent = d.detail || '(현재 작업 설명 없음)';
+  renderMeta(d);                                                               // 지표·목표·산출물
   const wrap = ov.querySelector('.sess-msgs');
   const pinned = wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 48;  // 바닥 근처면 자동 추적
   wrap.innerHTML = '';
