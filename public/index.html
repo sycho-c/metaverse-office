@@ -152,7 +152,12 @@
   .sess-msg { font-size: 14.5px; line-height: 1.6; border-radius: var(--r-md); padding: 9px 12px; white-space: pre-wrap; word-break: break-word; }
   .sess-msg.user { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a5f; align-self: flex-end; max-width: 88%; }
   .sess-msg.assistant { background: var(--panel2); border: 1px solid var(--line); align-self: flex-start; max-width: 92%; }
-  .sess-msg.tool { font-size: 12.5px; color: var(--dim); align-self: flex-start; padding: 2px 6px; }
+  .sess-msg.tool { font-size: 12.5px; color: var(--dim); align-self: flex-start; padding: 2px 6px; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; max-width: 92%; }
+  .sess-msg.tool .tool-name { font-weight: 700; color: var(--secondary); white-space: nowrap; }
+  .sess-msg.tool .tool-sum { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; opacity: .85; word-break: break-all; }
+  .sess-msg.tool .tool-st { font-weight: 800; }
+  .sess-msg.tool .tool-st.ok { color: #16a34a; }
+  .sess-msg.tool .tool-st.err { color: #dc2626; }
   .sess-msg .who { display: block; font-size: 11.5px; font-weight: 700; color: var(--dim); margin-bottom: 3px; letter-spacing: .04em; }
   .sess-msg .mtime { font-weight: 400; color: var(--dim); opacity: .8; }
   .sess-msg.tool .mtime { font-size: 11px; }

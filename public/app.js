@@ -2997,6 +2997,11 @@ function fmtTime(ts) {                         // ISO → "15:42"
   if (!ts) return '';
   try { return new Date(ts).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }); } catch (e) { return ''; }
 }
+function toolShortName(name) {                 // mcp__chrome-devtools__take_screenshot → take_screenshot
+  if (typeof name !== 'string') return 'tool';
+  if (name.startsWith('mcp__')) { const p = name.split('__'); return p[p.length - 1] || name; }
+  return name;
+}
 function fmtTokens(n) {                        // 1228318 → "1.2M"
   if (n == null || isNaN(n)) return null;
   if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
@@ -3112,8 +3117,15 @@ function renderSession(d) {
         if (time) { const tm = document.createElement('span'); tm.className = 'mtime'; tm.textContent = ' · ' + time; w.appendChild(tm); }
         el.appendChild(w);
         el.appendChild(document.createTextNode(m.text));
-      } else {
-        el.appendChild(document.createTextNode(m.text));
+      } else {                                   // 툴 단계: 🔧 이름 · 요약 · 상태(✓/✗)
+        const name = document.createElement('span'); name.className = 'tool-name';
+        name.textContent = '🔧 ' + toolShortName(m.name || 'tool');
+        el.appendChild(name);
+        if (m.text) { const sm = document.createElement('span'); sm.className = 'tool-sum'; sm.textContent = m.text; el.appendChild(sm); }
+        if (m.error === true || m.error === false) {
+          const st = document.createElement('span'); st.className = 'tool-st ' + (m.error ? 'err' : 'ok');
+          st.textContent = m.error ? '✗' : '✓'; el.appendChild(st);
+        }
         if (time) { const tm = document.createElement('span'); tm.className = 'mtime'; tm.textContent = ' · ' + time; el.appendChild(tm); }
       }
       wrap.appendChild(el);

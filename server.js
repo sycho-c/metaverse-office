@@ -145,21 +145,40 @@ function tailRead(p, maxBytes) {
   } finally { fs.closeSync(fd); }
 }
 
-// 한 트랜스크립트 라인에서 표시용 메시지 추출 ([{role, text}])
-function messagesFromLine(ev) {
+// tool_use 입력에서 사람이 읽을 한 줄 요약 추출 (툴 종류별 핵심 인자)
+function toolSummary(name, input) {
+  if (!input || typeof input !== 'object') return '';
+  const s = (v) => (v == null ? '' : String(v));
+  switch (name) {
+    case 'Bash': return s(input.description || input.command);
+    case 'Read': case 'Edit': case 'MultiEdit': case 'Write': case 'NotebookEdit':
+      return s(input.file_path || input.notebook_path);
+    case 'Grep': return s(input.pattern);
+    case 'Glob': return s(input.pattern);
+    case 'Task': case 'Agent': return s(input.description || input.subagent_type);
+    case 'WebFetch': return s(input.url);
+    case 'WebSearch': return s(input.query);
+    case 'TodoWrite': case 'TaskUpdate': return '';
+    default: return s(input.description || input.query || input.path || input.command || '');
+  }
+}
+
+// 한 트랜스크립트 라인에서 표시용 메시지 추출. tool_use 는 결과맵(resultById)으로 성공/실패 표시.
+function messagesFromLine(ev, resultById) {
   const out = [];
   const msg = ev.message; if (!msg) return out;
   const c = msg.content;
   if (ev.type === 'assistant') {
     if (typeof c === 'string') { const x = clean(c); if (x) out.push({ role: 'assistant', text: x }); }
     else if (Array.isArray(c)) {
-      const tools = [];
       for (const b of c) {
         if (!b) continue;
         if (b.type === 'text') { const x = clean(b.text || ''); if (x) out.push({ role: 'assistant', text: x }); }
-        else if (b.type === 'tool_use') tools.push(b.name || 'tool');
+        else if (b.type === 'tool_use') {                       // 툴 호출 1건 = trace 단계 1개
+          const r = (resultById && b.id) ? resultById[b.id] : undefined;
+          out.push({ role: 'tool', name: b.name || 'tool', text: clean(toolSummary(b.name, b.input)).slice(0, 100), error: r ? r.error : null });
+        }
       }
-      if (tools.length) out.push({ role: 'tool', text: '🔧 ' + [...new Set(tools)].join(', ') });
     }
   } else if (ev.type === 'user' && !ev.isMeta) {
     let raw = null;
@@ -175,18 +194,27 @@ function messagesFromLine(ev) {
   return out;
 }
 
-// 최근 limit 개의 대화 메시지(사람/AI/툴마커) 추출
+// 최근 limit 개의 대화 메시지(사람/AI/툴 단계) 추출 — tool_use↔tool_result 페어링
 function recentMessages(p, limit) {
   const text = tailRead(p, 600000);
   const lines = text.split('\n');
-  const all = [];
+  const events = [];
+  const resultById = {};                       // tool_use_id → { error }
   for (const line of lines) {
     const t = line.trim();
     if (!t || t[0] !== '{') continue;
     let ev; try { ev = JSON.parse(t); } catch (e) { continue; }
     if (ev.isSidechain) continue;             // 서브에이전트 제외
-    for (const m of messagesFromLine(ev)) {
-      if (m.text.length > 700) m.text = m.text.slice(0, 700) + '…';
+    events.push(ev);
+    const c = ev.message && ev.message.content;
+    if (ev.type === 'user' && Array.isArray(c)) {
+      for (const b of c) if (b && b.type === 'tool_result' && b.tool_use_id) resultById[b.tool_use_id] = { error: !!b.is_error };
+    }
+  }
+  const all = [];
+  for (const ev of events) {
+    for (const m of messagesFromLine(ev, resultById)) {
+      if (m.text && m.text.length > 700) m.text = m.text.slice(0, 700) + '…';
       all.push(m);
     }
   }
