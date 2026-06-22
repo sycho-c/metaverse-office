@@ -13,6 +13,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { spawn } = require('child_process');
 
 const PORT = Number(process.env.PORT || 4848);
 const STALL_MIN = Number(process.env.STALL_MIN || 5);
@@ -276,7 +277,10 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // 세션에게 말 걸기 — 메시지를 해당 잡 폴더 인박스에 적재(안전). 실제 전달(btw)은 이 자리에 연결.
+  // 세션에게 말 걸기 — 상태 게이트 전달(A안).
+  //  · done(유휴)        → `claude --resume <sessionId> -p "<msg>"` 로 그 세션에 새 턴을 직접 전달
+  //  · working/blocked   → in-flight/held 충돌 위험이라 보류(인박스 적재만). 세션이 done 되면 재시도 가능.
+  // 어떤 경우든 감사용으로 office-inbox.jsonl 에 결과(status)와 함께 기록한다.
   if (url.pathname === '/api/talk' && req.method === 'POST') {
     let body = '';
     req.on('data', (c) => { body += c; if (body.length > 100000) req.destroy(); });
@@ -289,14 +293,39 @@ const server = http.createServer((req, res) => {
       if (!id || !message) return json(400, { ok: false, error: 'id/message required' });
       const dir = path.join(JOBS_DIR, id);
       if (!fs.existsSync(dir)) return json(404, { ok: false, error: 'unknown session' });
-      let sessionId = null, cwd = null;
-      try { const st = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8')); sessionId = st.sessionId || null; cwd = st.cwd || null; } catch (e) { /* noop */ }
+      let sessionId = null, cwd = null, state = null;
+      try { const st = JSON.parse(fs.readFileSync(path.join(dir, 'state.json'), 'utf8')); sessionId = st.sessionId || null; cwd = st.cwd || null; state = st.state || null; } catch (e) { /* noop */ }
+
+      // 전달 가능 조건: 유휴(done) + sessionId 확보. working/blocked 은 보류.
+      const deliverable = state === 'done' && !!sessionId;
+      let status, delivered = false, reason = null;
+      if (deliverable) {
+        try {
+          const logPath = path.join(dir, 'office-delivery.log');
+          const out = fs.openSync(logPath, 'a');
+          const child = spawn('claude', ['--resume', sessionId, '-p', message], {
+            cwd: cwd && fs.existsSync(cwd) ? cwd : undefined,
+            stdio: ['ignore', out, out],
+            detached: true,
+          });
+          child.on('error', () => { /* claude 미존재 등 — 인박스 기록은 유지 */ });
+          child.unref();
+          delivered = true;
+          status = 'delivered';
+        } catch (e) {
+          status = 'parked';
+          reason = 'spawn-failed: ' + String(e.message);
+        }
+      } else {
+        status = 'parked';
+        reason = !sessionId ? 'no-session-id' : (state === 'working' ? 'busy-working' : (state === 'blocked' ? 'held-blocked' : 'idle-unknown:' + state));
+      }
+
       try {
-        const rec = { ts: new Date().toISOString(), via: 'office-player', sessionId, cwd, message };
+        const rec = { ts: new Date().toISOString(), via: 'office-player', sessionId, cwd, state, message, status, reason };
         fs.appendFileSync(path.join(dir, 'office-inbox.jsonl'), JSON.stringify(rec) + '\n');
       } catch (e) { return json(500, { ok: false, error: String(e.message) }); }
-      // TODO(btw): 여기서 실제 세션 전달(btw 스킬/명령)로 교체. 현재는 인박스 파일에 적재만.
-      return json(200, { ok: true, id, sessionId, parked: 'office-inbox.jsonl' });
+      return json(200, { ok: true, id, sessionId, state, delivered, status, reason });
     });
     return;
   }

@@ -2899,7 +2899,17 @@ async function sendTalk() {
       body: JSON.stringify({ id: target.id, message: msg }),
     });
     const d = await res.json().catch(() => ({}));
-    toastMsg(d.ok ? `‘${target.name}’에게 전송됨` : `전송 실패: ${d.error || res.status}`, !!d.ok);
+    if (!d.ok) { toastMsg(`전송 실패: ${d.error || res.status}`, false); return; }
+    if (d.delivered) {
+      toastMsg(`‘${target.name}’에게 전달됨`, true);
+    } else {
+      const why = {
+        'busy-working': '작업 중이라 대기열에 보류 (완료되면 다시 시도)',
+        'held-blocked': '입력 대기 중이라 보류',
+        'no-session-id': '세션 식별 불가로 보류',
+      }[d.reason] || `보류됨 (${d.reason || d.status})`;
+      toastMsg(`‘${target.name}’ — ${why}`, false);
+    }
   } catch (e) {
     toastMsg('전송 실패 (네트워크)', false);
   }
