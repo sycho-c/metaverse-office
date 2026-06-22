@@ -400,6 +400,9 @@ const TAG_COLOR = {
   working: '#22C55E', done: '#3B82F6', blocked: '#F59E0B',
   stalled: '#EF4444', unknown: '#64748B',
 };
+// 색맹 안전: 상태를 색만이 아니라 형태(흰 글리프)로도 구분 (WCAG 1.4.1 / CHI 2026 이중부호화)
+// working 은 기존 점멸 점이 표식 → 글리프 없음. 나머지는 형태가 서로 뚜렷한 단색 기호.
+const STATE_GLYPH = { working: null, done: '✓', blocked: '!', stalled: 'z', unknown: '?' };
 
 const SKINS  = ['#f1c27d', '#e0ac69', '#ffdbac', '#d9a066'];
 const HAIRS  = ['#2d2235', '#4a3320', '#7b4a12', '#26262c', '#8c2f2f', '#3a4a8c', '#62656d', '#c75b8a'];
@@ -545,7 +548,7 @@ function renderUsage(u) {
 function update(next) {
   for (const s of next) {
     const prev = prevEffective.get(s.id);
-    if (prev && prev !== s.effective) toast(s);
+    if (prev && prev !== s.effective) { toast(s); maybeNotify(s); }
     prevEffective.set(s.id, s.effective);
   }
   sessions = next;
@@ -1809,7 +1812,7 @@ function drawTags(t) {
     if (nm !== j.s.name) nm += '…';
     const tw = ctx.measureText(nm).width;
     const working = j.s.effective === 'working';
-    const bw = tw + (working ? 28 : 18) * k;
+    const bw = tw + 28 * k;                        // 좌측 상태 표식(점/글리프) 공간 항상 확보
     items.push({ j, nm, working, bw, bh: 18 * k, cx: j.scx, y0: j.sy, y: j.sy });
   }
 
@@ -1862,11 +1865,20 @@ function drawTags(t) {
       ctx.globalAlpha = 0.45 + 0.55 * Math.abs(Math.sin(t / 300));
       ctx.beginPath(); ctx.arc(bx + 10 * k, by + 9 * k, 3.5 * k, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = 1;
+    } else {                                      // 그 외: 상태별 흰 글리프(색맹 안전 이중부호화)
+      const g = STATE_GLYPH[j.s.effective] || STATE_GLYPH.unknown;
+      if (g) {
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `800 ${12 * k}px -apple-system, "Apple SD Gothic Neo", sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(g, bx + 10 * k, by + 9.5 * k);
+        ctx.textAlign = 'left';
+      }
     }
     ctx.font = fontTag;
     ctx.fillStyle = '#ffffff';
     ctx.textBaseline = 'middle';
-    ctx.fillText(it.nm, bx + (it.working ? 18 : 9) * k, by + 9.5 * k);
+    ctx.fillText(it.nm, bx + 18 * k, by + 9.5 * k);
   }
 
   for (const z of zoneLabels) {
@@ -2826,6 +2838,60 @@ function setSpeech(on) {
   if (!on) speeches.clear();
 }
 
+// 알림 — 세션이 입력 대기(blocked)/멈춤(stalled) 으로 전이할 때 데스크톱 알림 + 소리.
+// 앰비언트 알림 그래디언트(Pousman & Stasko): interrupt 는 진짜 주목이 필요한 상태에만 예약.
+const NOTIFY = [
+  { key: 'off', label: '🔕 끄기', states: [] },
+  { key: 'blocked', label: '🔔 입력 대기', states: ['blocked'] },
+  { key: 'blocked_stalled', label: '🔔 입력대기+멈춤', states: ['blocked', 'stalled'] },
+];
+function resolveNotify() {
+  try { const k = localStorage.getItem('office.notify'); const f = NOTIFY.find((n) => n.key === k); if (f) return f; } catch (e) { /* */ }
+  return NOTIFY[1];   // 기본: 입력 대기만
+}
+let notifySetting = resolveNotify();
+let audioCtx = null;
+function beep() {                              // zero-dep WebAudio 알림음(짧은 2음)
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const now = audioCtx.currentTime;
+    [[660, 0], [880, 0.12]].forEach(([f, dt]) => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      o.connect(g); g.connect(audioCtx.destination);
+      g.gain.setValueAtTime(0.0001, now + dt);
+      g.gain.exponentialRampToValueAtTime(0.16, now + dt + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + dt + 0.18);
+      o.start(now + dt); o.stop(now + dt + 0.2);
+    });
+  } catch (e) { /* */ }
+}
+function maybeNotify(s) {                      // update() 가 전이 시 호출
+  if (!notifySetting.states.includes(s.effective)) return;
+  beep();
+  if (window.Notification && Notification.permission === 'granted') {
+    const m = STATE_META[s.effective] || STATE_META.unknown;
+    const title = `${m.emoji || '🔔'} ${s.name}`;
+    const body = (s.effective === 'blocked' ? '입력 대기 중' : m.label) + (s.detail ? ' — ' + String(s.detail).slice(0, 90) : '');
+    try {
+      const n = new Notification(title, { body, tag: 'office-' + s.id, silent: true });
+      n.onclick = () => { window.focus(); try { openTalk(s); } catch (e) { /* */ } n.close(); };
+    } catch (e) { /* */ }
+  }
+}
+function setNotify(key) {
+  const f = NOTIFY.find((n) => n.key === key);
+  if (!f) return;
+  notifySetting = f;
+  try { localStorage.setItem('office.notify', key); } catch (e) { /* */ }
+  const sel = document.getElementById('notify-select');
+  if (sel && sel.value !== key) sel.value = key;
+  // 켤 때 권한 요청(설정 변경=사용자 제스처) — 거부돼도 소리는 동작
+  if (key !== 'off' && window.Notification && Notification.permission === 'default') {
+    Notification.requestPermission().then((p) => { if (p === 'denied') toastMsg('데스크톱 알림은 차단됨 — 소리로만 알립니다', false); });
+  }
+}
+
 function ensurePlayerVisible() {        // 이동 시 플레이어를 화면 안으로 스크롤(스폰이 화면 밖이어도 보이게)
   const wrap = document.getElementById('canvas-wrap');
   if (!wrap || !wrap.clientHeight) return;
@@ -3103,6 +3169,14 @@ function initPlayerControls() {
     for (const o of [['on', '💬 켜기'], ['off', '🔇 끄기']]) { const op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; sc.appendChild(op); }
     sc.value = speechOn ? 'on' : 'off';
     sc.addEventListener('change', (e) => setSpeech(e.target.value === 'on'));
+  }
+  // 알림 드롭다운
+  const nt = document.getElementById('notify-select');
+  if (nt) {
+    nt.innerHTML = '';
+    for (const n of NOTIFY) { const o = document.createElement('option'); o.value = n.key; o.textContent = n.label; nt.appendChild(o); }
+    nt.value = notifySetting.key;
+    nt.addEventListener('change', (e) => setNotify(e.target.value));
   }
   const sx = document.querySelector('#session .sess-x');
   if (sx) sx.addEventListener('click', closeTalk);
