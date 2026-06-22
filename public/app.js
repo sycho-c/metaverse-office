@@ -2324,6 +2324,7 @@ function pickSpeechLine(s) {
   return lines[Math.floor(Math.random() * lines.length)];
 }
 function tickSpeech(vis, t) {
+  if (!speechOn) { if (speeches.size) speeches.clear(); return; }
   for (const [id, sp] of speeches) if (sp.until < t) speeches.delete(id);
   speechCooldown -= dtFrame;
   if (speechCooldown > 0 || speeches.size >= 3) return;
@@ -2784,6 +2785,47 @@ function setSpeed(key) {
   if (sel && sel.value !== key) sel.value = key;
 }
 
+// 세션 패널 자동 갱신 주기 — 설정에서 선택, localStorage('office.refresh') 영속
+const REFRESHES = [
+  { key: '3s', label: '⚡ 3초', ms: 3000 },
+  { key: '5s', label: '🔄 5초', ms: 5000 },
+  { key: '10s', label: '🐢 10초', ms: 10000 },
+  { key: 'manual', label: '✋ 수동(안 함)', ms: 0 },
+];
+function resolveRefresh() {
+  try { const k = localStorage.getItem('office.refresh'); const f = REFRESHES.find((r) => r.key === k); if (f) return f; } catch (e) { /* */ }
+  return REFRESHES[1];
+}
+let refreshSetting = resolveRefresh();
+function applyPanelTimer() {                 // 열린 패널을 현재 주기로 재설정 + LIVE 표시 토글
+  if (sessionTimer) { clearInterval(sessionTimer); sessionTimer = null; }
+  const live = document.querySelector('#session .sess-live');
+  if (live) {
+    live.style.display = refreshSetting.ms > 0 ? '' : 'none';
+    live.title = refreshSetting.ms > 0 ? `${refreshSetting.ms / 1000}초마다 자동 갱신` : '';
+  }
+  if (talking && talkTarget && refreshSetting.ms > 0) {
+    sessionTimer = setInterval(() => loadSession(talkTarget, false), refreshSetting.ms);
+  }
+}
+function setRefresh(key) {
+  const f = REFRESHES.find((r) => r.key === key);
+  if (!f) return;
+  refreshSetting = f;
+  try { localStorage.setItem('office.refresh', key); } catch (e) { /* */ }
+  const sel = document.getElementById('refresh-select');
+  if (sel && sel.value !== key) sel.value = key;
+  applyPanelTimer();
+}
+
+// 대사 말풍선 표시 — localStorage('office.speech') 영속(기본 켜기)
+let speechOn = (() => { try { return localStorage.getItem('office.speech') !== 'off'; } catch (e) { return true; } })();
+function setSpeech(on) {
+  speechOn = !!on;
+  try { localStorage.setItem('office.speech', on ? 'on' : 'off'); } catch (e) { /* */ }
+  if (!on) speeches.clear();
+}
+
 function ensurePlayerVisible() {        // 이동 시 플레이어를 화면 안으로 스크롤(스폰이 화면 밖이어도 보이게)
   const wrap = document.getElementById('canvas-wrap');
   if (!wrap || !wrap.clientHeight) return;
@@ -2875,8 +2917,7 @@ function toastMsg(text, ok) {
 // 세션 내용 보기(읽기 전용) — 다가가 Enter. 상태/현재작업 + 최근 대화 미리보기.
 // 명령 실행은 CLI 터미널에서 하므로, 이어가기용 `claude --resume` 명령만 복사 제공.
 let sessionData = null;
-let sessionTimer = null;                      // 패널 열린 동안 라이브 갱신 타이머
-const SESSION_POLL_MS = 5000;
+let sessionTimer = null;                      // 패널 열린 동안 라이브 갱신 타이머(주기는 refreshSetting)
 function setBadge(ov, eff) {
   const b = ov.querySelector('.sess-badge');
   const m = STATE_META[eff] || STATE_META.unknown;
@@ -2914,7 +2955,7 @@ async function openTalk(s) {                 // (이름 유지) 세션 패널 �
   if (sessionTimer) { clearInterval(sessionTimer); sessionTimer = null; }
   sessionData = null;
   await loadSession(s, true);
-  sessionTimer = setInterval(() => loadSession(s, false), SESSION_POLL_MS);   // 5초 주기 갱신
+  applyPanelTimer();                          // refreshSetting 주기로 라이브 갱신 시작(수동이면 미설정)
 }
 function renderSession(d) {
   const ov = document.getElementById('session');
@@ -3021,6 +3062,22 @@ function initPlayerControls() {
     for (const s of SPEEDS) { const o = document.createElement('option'); o.value = s.key; o.textContent = s.label; sp.appendChild(o); }
     sp.value = speedSetting.key;
     sp.addEventListener('change', (e) => setSpeed(e.target.value));
+  }
+  // 패널 자동 갱신 주기 드롭다운
+  const rf = document.getElementById('refresh-select');
+  if (rf) {
+    rf.innerHTML = '';
+    for (const r of REFRESHES) { const o = document.createElement('option'); o.value = r.key; o.textContent = r.label; rf.appendChild(o); }
+    rf.value = refreshSetting.key;
+    rf.addEventListener('change', (e) => setRefresh(e.target.value));
+  }
+  // 대사 말풍선 표시 드롭다운
+  const sc = document.getElementById('speech-select');
+  if (sc) {
+    sc.innerHTML = '';
+    for (const o of [['on', '💬 켜기'], ['off', '🔇 끄기']]) { const op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; sc.appendChild(op); }
+    sc.value = speechOn ? 'on' : 'off';
+    sc.addEventListener('change', (e) => setSpeech(e.target.value === 'on'));
   }
   const sx = document.querySelector('#session .sess-x');
   if (sx) sx.addEventListener('click', closeTalk);
