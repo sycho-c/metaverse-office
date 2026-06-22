@@ -2875,13 +2875,33 @@ function toastMsg(text, ok) {
 // 세션 내용 보기(읽기 전용) — 다가가 Enter. 상태/현재작업 + 최근 대화 미리보기.
 // 명령 실행은 CLI 터미널에서 하므로, 이어가기용 `claude --resume` 명령만 복사 제공.
 let sessionData = null;
+let sessionTimer = null;                      // 패널 열린 동안 라이브 갱신 타이머
+const SESSION_POLL_MS = 5000;
 function setBadge(ov, eff) {
   const b = ov.querySelector('.sess-badge');
   const m = STATE_META[eff] || STATE_META.unknown;
   b.className = 'sess-badge ' + eff;
   b.textContent = (m.emoji ? m.emoji + ' ' : '') + m.label;
 }
-async function openTalk(s) {                 // (이름 유지) 세션 패널 열기
+// 변화 감지용 시그니처(상태·현재작업·메시지 수·마지막 메시지 꼬리)
+function sessionSig(d) {
+  const last = d.messages && d.messages.length ? d.messages[d.messages.length - 1].text : '';
+  return (d.state || '') + '|' + (d.detail || '') + '|' + (d.messages ? d.messages.length : 0) + '|' + last.slice(-48);
+}
+async function loadSession(s, initial) {
+  const ov = document.getElementById('session');
+  try {
+    const res = await fetch(`/api/transcript?id=${encodeURIComponent(s.id)}&limit=30`);
+    const d = await res.json().catch(() => ({}));
+    if (!talking || talkTarget !== s) return;          // 이미 닫혔거나 대상 변경
+    if (!d.ok) { if (initial) ov.querySelector('.sess-detail').textContent = '불러오기 실패: ' + (d.error || res.status); return; }
+    if (!initial && sessionData && sessionSig(d) === sessionSig(sessionData)) return;  // 변화 없음 → 깜빡임 방지
+    renderSession(d);
+  } catch (e) {
+    if (initial) ov.querySelector('.sess-detail').textContent = '불러오기 실패 (네트워크)';
+  }
+}
+async function openTalk(s) {                 // (이름 유지) 세션 패널 열기 + 라이브 갱신 시작
   talkTarget = s; talking = true;
   keys.up = keys.down = keys.left = keys.right = keys.sprint = false;
   const ov = document.getElementById('session');
@@ -2891,20 +2911,17 @@ async function openTalk(s) {                 // (이름 유지) 세션 패널 �
   ov.querySelector('.sess-msgs').innerHTML = '';
   ov.querySelector('.sess-cmd').textContent = '';
   ov.style.display = 'flex';
-  try {
-    const res = await fetch(`/api/transcript?id=${encodeURIComponent(s.id)}&limit=30`);
-    const d = await res.json().catch(() => ({}));
-    if (!talking || talkTarget !== s) return;          // 이미 닫혔거나 대상 변경
-    if (!d.ok) { ov.querySelector('.sess-detail').textContent = '불러오기 실패: ' + (d.error || res.status); return; }
-    renderSession(d);
-  } catch (e) {
-    ov.querySelector('.sess-detail').textContent = '불러오기 실패 (네트워크)';
-  }
+  if (sessionTimer) { clearInterval(sessionTimer); sessionTimer = null; }
+  sessionData = null;
+  await loadSession(s, true);
+  sessionTimer = setInterval(() => loadSession(s, false), SESSION_POLL_MS);   // 5초 주기 갱신
 }
 function renderSession(d) {
   const ov = document.getElementById('session');
+  if (d.state) setBadge(ov, d.state);                                          // 라이브 상태 반영
   ov.querySelector('.sess-detail').textContent = d.detail || '(현재 작업 설명 없음)';
   const wrap = ov.querySelector('.sess-msgs');
+  const pinned = wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 48;  // 바닥 근처면 자동 추적
   wrap.innerHTML = '';
   if (!d.messages || !d.messages.length) {
     const e = document.createElement('div'); e.className = 'sess-empty';
@@ -2921,13 +2938,14 @@ function renderSession(d) {
       el.appendChild(document.createTextNode(m.text));
       wrap.appendChild(el);
     }
-    wrap.scrollTop = wrap.scrollHeight;
+    if (pinned) wrap.scrollTop = wrap.scrollHeight;                            // 바닥이었으면 새 내용까지 추적
   }
   ov.querySelector('.sess-cmd').textContent = d.resumeCmd || '(세션 ID 없음)';
   sessionData = d;
 }
-function closeTalk() {                        // (이름 유지) 세션 패널 닫기
+function closeTalk() {                        // (이름 유지) 세션 패널 닫기 + 갱신 중지
   talking = false; talkTarget = null; sessionData = null;
+  if (sessionTimer) { clearInterval(sessionTimer); sessionTimer = null; }
   const ov = document.getElementById('session');
   if (ov) ov.style.display = 'none';
 }
