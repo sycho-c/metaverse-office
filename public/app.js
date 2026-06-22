@@ -395,10 +395,11 @@ const STATE_META = {
   unknown: { color: '#64748B', label: '알 수 없음', emoji: '❔' },
 };
 
-// 이름표 버블 배경(흰 글씨) = 시맨틱 색 그대로
+// 이름표 버블 배경(흰 글씨) — WCAG AA(흰 글씨 4.5:1↑) 통과 음영.
+// 우측 목록 점(STATE_META.color)은 밝은 색 유지(라벨 텍스트가 있어 접근성 OK).
 const TAG_COLOR = {
-  working: '#22C55E', done: '#3B82F6', blocked: '#F59E0B',
-  stalled: '#EF4444', unknown: '#64748B',
+  working: '#15803D', done: '#2563EB', blocked: '#B45309',
+  stalled: '#DC2626', unknown: '#64748B',
 };
 // 색맹 안전: 상태를 색만이 아니라 형태(흰 글리프)로도 구분 (WCAG 1.4.1 / CHI 2026 이중부호화)
 // working 은 기존 점멸 점이 표식 → 글리프 없음. 나머지는 형태가 서로 뚜렷한 단색 기호.
@@ -2866,8 +2867,13 @@ function beep() {                              // zero-dep WebAudio 알림음(�
     });
   } catch (e) { /* */ }
 }
+const notifyCooldown = new Map();             // id → 마지막 알림 시각(ms)
+const NOTIFY_COOLDOWN_MS = 180000;            // 3분: 같은 세션 반복/플래핑 알림 억제(alert fatigue 방지)
 function maybeNotify(s) {                      // update() 가 전이 시 호출
   if (!notifySetting.states.includes(s.effective)) return;
+  const t = Date.now(), last = notifyCooldown.get(s.id) || 0;
+  if (t - last < NOTIFY_COOLDOWN_MS) return;   // 쿨다운 내 중복 알림 억제
+  notifyCooldown.set(s.id, t);
   beep();
   if (window.Notification && Notification.permission === 'granted') {
     const m = STATE_META[s.effective] || STATE_META.unknown;
