@@ -251,6 +251,8 @@
   .item .row1 { display: flex; align-items: center; gap: 8px; }
   .item .name { font-size: 14px; line-height: 20px; font-weight: 700; color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* Tags (Status) — 디자인 시스템 pill */
+  .item .inflight { font-size: 10px; font-weight: 700; color: #15803D; background: rgba(34,197,94,.14); border-radius: 999px; padding: 1px 7px; flex-shrink: 0; white-space: nowrap; animation: inflight-pulse 1.6s ease-in-out infinite; }
+  @keyframes inflight-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
   .badge { font-size: 11px; line-height: 14px; padding: 4px 10px; border-radius: 999px; font-weight: 600; flex-shrink: 0; }
   .badge.working { background: #DCFCE7; color: #16A34A; }
   .badge.done { background: #DBEAFE; color: #2563EB; }

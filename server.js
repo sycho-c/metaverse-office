@@ -285,6 +285,7 @@ function readJobs() {
       lastPrompt: ex.prompt,
       lastResponse: ex.response,
       tempo: st.tempo || '',
+      inFlight: (st.inFlight && typeof st.inFlight === 'object') ? (st.inFlight.tasks || 0) : 0,
       project: cwd ? path.basename(cwd) : '',
       cwd,
       createdAt: st.createdAt || null,

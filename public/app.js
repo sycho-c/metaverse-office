@@ -619,6 +619,7 @@ function renderPanel() {
       <div class="row1">
         <span class="dot ${s.effective}" style="background:${m.color}"></span>
         <span class="name"></span>
+        ${(s.effective === 'working' && s.inFlight > 0) ? `<span class="inflight" title="지금 도구 ${s.inFlight}개 실행 중">⚙ ${s.inFlight}</span>` : ''}
         <span class="badge ${s.effective}">${m.label}</span>
       </div>
       <div class="lastreq"></div>
