@@ -447,6 +447,20 @@ const SAY = {
 const canvas = document.getElementById('office');
 const ctx = canvas.getContext('2d');
 const listEl = document.getElementById('list');
+let searchQuery = '';                          // 세션 검색어
+let statusFilter = 'all';                       // 상태 필터(all/working/blocked/stalled/done)
+function initPanelTools() {
+  const search = document.getElementById('sess-search');
+  if (search) search.addEventListener('input', (e) => { searchQuery = e.target.value || ''; renderPanel(); });
+  const chips = document.getElementById('filter-chips');
+  if (chips) chips.addEventListener('click', (e) => {
+    const btn = e.target.closest('.fchip'); if (!btn) return;
+    statusFilter = btn.dataset.f || 'all';
+    chips.querySelectorAll('.fchip').forEach((b) => b.classList.toggle('on', b === btn));
+    renderPanel();
+  });
+}
+initPanelTools();
 const connEl = document.getElementById('conn');
 
 // ---------- 유틸 ----------
@@ -580,7 +594,24 @@ function renderPanel() {
     (a, b) => order[a.effective] - order[b.effective] ||
       (b.lastActivity || 0) - (a.lastActivity || 0)
   );
-  for (const s of sorted) {
+  // 검색·상태 필터 적용 (헤더 카운트 칩은 전체 기준 유지)
+  const q = searchQuery.trim().toLowerCase();
+  const filtered = sorted.filter((s) => {
+    if (statusFilter !== 'all' && s.effective !== statusFilter) return false;
+    if (q) {
+      const hay = (s.name + ' ' + (s.project || '') + ' ' + (s.detail || '') + ' ' + (s.lastPrompt || '') + ' ' + (s.lastResponse || '')).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  if (!filtered.length) {
+    const empty = document.createElement('li');
+    empty.className = 'list-empty';
+    empty.textContent = (q || statusFilter !== 'all') ? '조건에 맞는 세션이 없습니다.' : '세션이 없습니다.';
+    listEl.appendChild(empty);
+    return;
+  }
+  for (const s of filtered) {
     const m = STATE_META[s.effective] || STATE_META.unknown;
     const li = document.createElement('li');
     li.className = 'item ' + s.effective + (s.id === highlightId ? ' hl' : '');

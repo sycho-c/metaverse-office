@@ -213,6 +213,14 @@
     padding: 16px;
   }
   aside h2 { font-size: 12px; color: var(--dim); margin: 2px 2px 12px; font-weight: 700; letter-spacing: 1.2px; }
+  .panel-tools { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+  #sess-search { font: inherit; font-size: 13px; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 7px 13px; outline: none; width: 100%; box-sizing: border-box; }
+  #sess-search:focus { border-color: var(--primary-500); box-shadow: 0 0 0 3px rgba(59,130,246,.15); }
+  .filter-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .fchip { font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; color: var(--secondary); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 3px 11px; }
+  .fchip.on { background: var(--primary-500, #3b82f6); border-color: var(--primary-500, #3b82f6); color: #fff; }
+  .fchip:not(.on):hover { border-color: var(--dim); }
+  .list-empty { font-size: 12.5px; color: var(--dim); text-align: center; padding: 24px 8px; }
   /* 헤더 사용량 미니바 (확대) */
   .hu { display: flex; align-items: center; gap: 22px; margin-right: 10px; }
   .hu-item { display: flex; align-items: center; gap: 9px; cursor: default; }
@@ -304,6 +312,16 @@
     <div id="canvas-wrap"><canvas id="office" width="800" height="600"></canvas></div>
     <aside id="panel">
       <h2>SESSIONS</h2>
+      <div class="panel-tools">
+        <input id="sess-search" type="text" placeholder="세션 검색 (이름·프로젝트·내용)…" autocomplete="off" />
+        <div class="filter-chips" id="filter-chips">
+          <button type="button" data-f="all" class="fchip on">전체</button>
+          <button type="button" data-f="working" class="fchip">작업중</button>
+          <button type="button" data-f="blocked" class="fchip">대기</button>
+          <button type="button" data-f="stalled" class="fchip">멈춤</button>
+          <button type="button" data-f="done" class="fchip">완료</button>
+        </div>
+      </div>
       <ul id="list" style="list-style:none;margin:0;padding:0"></ul>
     </aside>
   </main>
