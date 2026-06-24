@@ -269,7 +269,10 @@
     border-radius: var(--r-sm); padding: 7px 9px;
     display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
   }
-  .item .meta { font-size: 11px; line-height: 14px; color: var(--dim); margin-top: 9px; display: flex; gap: 10px; }
+  .item .meta { font-size: 11px; line-height: 14px; color: var(--dim); margin-top: 9px; display: flex; gap: 10px; align-items: center; }
+  .item .view-btn { margin-left: auto; font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; color: var(--secondary); background: var(--panel2); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; white-space: nowrap; opacity: .55; transition: opacity .12s, border-color .12s; }
+  .item:hover .view-btn { opacity: 1; }
+  .item .view-btn:hover { border-color: var(--primary-500, #3b82f6); color: var(--primary-700, #1d4ed8); }
 
   #toasts { position: fixed; right: 350px; top: 64px; z-index: 50; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
   .toast {

@@ -624,7 +624,7 @@ function renderPanel() {
       </div>
       <div class="lastreq"></div>
       <div class="resp"></div>
-      <div class="meta"><span>📁 ${s.project || '?'}</span><span>🕐 ${rel(s.lastActivity)}</span></div>`;
+      <div class="meta"><span>📁 ${s.project || '?'}</span><span>🕐 ${rel(s.lastActivity)}</span><button class="view-btn" type="button" title="세션 내용·이전 히스토리 보기">📄 내용 보기</button></div>`;
     li.querySelector('.name').textContent = s.name;
     const lr = li.querySelector('.lastreq');
     if (s.lastPrompt) { lr.textContent = '🗨 ' + s.lastPrompt; lr.title = s.lastPrompt; }
@@ -635,6 +635,9 @@ function renderPanel() {
     else rp.style.display = 'none';
     li.title = s.lastPrompt ? `내 요청: ${s.lastPrompt}\n\nAI 응답: ${respText}` : respText;
     li.onclick = () => { highlightId = s.id === highlightId ? null : s.id; renderPanel(); };
+    li.ondblclick = () => { highlightId = s.id; openTalk(s); };           // 더블클릭: 내용 패널 열기
+    const vb = li.querySelector('.view-btn');
+    if (vb) vb.onclick = (e) => { e.stopPropagation(); highlightId = s.id; openTalk(s); };   // 버튼: 내용 패널(하이라이트 토글 안 함)
     listEl.appendChild(li);
   }
 }
