@@ -48,6 +48,23 @@ node server.js
 | `GET /api/sessions` | 현재 세션 스냅샷(디버깅용) |
 | `GET /api/transcript?id=<jobId>&limit=N` | 세션 내용 보기용 — 상태·현재작업·지표(tokens/inFlight)·목표(intent)·실행중(fan)·산출물(children)·최근 대화(툴 단계 포함, 시각/성공·실패)·`claude --resume` 명령 |
 
+## 코드 구조 (프론트엔드 ESM 모듈)
+
+`public/app.js`(classic script, 단일 거대 파일)를 책임별 ES 모듈로 분리 중이다.
+브라우저 네이티브 ESM(`<script type="module">`)이라 번들러 없이 의존성 0 유지.
+
+| 모듈 | 책임 |
+|---|---|
+| `lib/{hash,color,seating,sig,format}.mjs` | 순수 로직(외형 해시·색 연산·좌석 배정·시그니처·포매터). `node --test` 대상 |
+| `core/gfx.mjs` | 공유 렌더 컨텍스트(canvas·2D ctx·팔레트 C/TH·스케일 S·타이밍). live binding + setter |
+| `constants.mjs` | 불변 데이터(레이아웃·상태 의미색·캐릭터 팔레트·대사) |
+| `themes.mjs` | 테마 레지스트리 12종 + 활성 테마 해석 |
+| `render/primitives.mjs` | 그리기 leaf 헬퍼(roundRect·shadow·drawPlant) |
+| `claude-status.mjs` | status.claude.com 폴링 위젯(자족 side-effect) |
+| `app.js` | (분리 진행 중) 월드 시뮬·렌더 오케스트레이션·세션 패널·플레이어·SSE |
+
+**테스트**: `npm test` (= `node --test test/*.test.mjs`, 의존성 0). 순수 로직 회귀 안전망.
+
 ## UI 기능
 
 - **애플 스타일 오피스**: 화이트 사각 타일 바닥, iMac/맥북 데스크, 휴게실·탕비실/스낵코너·복도
