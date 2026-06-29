@@ -2,6 +2,13 @@
  * 애플 스타일 오피스: 화이트+라이트 오크+알루미늄, iMac 데스크, 자유 배치 클러스터 */
 'use strict';
 
+// ---------- 순수 로직 모듈 (테스트 대상, public/lib/*.mjs) ----------
+import { hash } from './lib/hash.mjs';
+import { darken } from './lib/color.mjs';
+import { seatAssignment, seatOrder } from './lib/seating.mjs';
+import { sessionSig } from './lib/sig.mjs';
+import { rel, resetLabel, usageColor, freshnessLabel, fmtTime, toolShortName, fmtTokens, fmtElapsed } from './lib/format.mjs';
+
 // ---------- 레이아웃 상수 ----------
 const DISP = 2;                    // 화면 표시 배율 (CSS px per 논리 px)
 let S = 2;                         // 백킹 렌더 배율 = DISP × devicePixelRatio (프레임마다 갱신, 고DPI 선명도)
@@ -68,16 +75,7 @@ const THEMES = {
   },
 };
 // 새 테마는 apple 베이스에 차이값만 덮어써 정의(누락 토큰 방지). 다크 계열은 outline/shadow도 함께 보정.
-// hex 를 비율 f 만큼 어둡게(0~1). 존 러그를 바닥색에서 자동 파생할 때 사용.
-function darken(hex, f) {
-  let h = hex.replace('#', '');
-  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
-  const n = parseInt(h, 16);
-  const r = Math.round(((n >> 16) & 255) * (1 - f));
-  const g = Math.round(((n >> 8) & 255) * (1 - f));
-  const b = Math.round((n & 255) * (1 - f));
-  return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
-}
+// darken() → lib/color.mjs
 // zoneRug 미지정 테마는 바닥색에서 러그를 파생(바닥 위 살짝 어두운 톤) → 자동 톤 일치
 function deriveRugs(zf) {
   const out = {};
@@ -464,11 +462,7 @@ initPanelTools();
 const connEl = document.getElementById('conn');
 
 // ---------- 유틸 ----------
-function hash(s) {
-  let h = 2166136261;
-  for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); }
-  return h >>> 0;
-}
+// hash() → lib/hash.mjs
 function lookOf(id) {
   const h = hash(id);
   const hi = (h >>> 3) % HAIRS.length;
@@ -484,14 +478,7 @@ function lookOf(id) {
     phase: (h % 100) / 100 * Math.PI * 2,
   };
 }
-function rel(ms) {
-  if (!ms) return '—';
-  const d = Date.now() - ms;
-  if (d < 60e3) return '방금';
-  if (d < 3600e3) return Math.floor(d / 60e3) + '분 전';
-  if (d < 86400e3) return Math.floor(d / 3600e3) + '시간 전';
-  return Math.floor(d / 86400e3) + '일 전';
-}
+// rel() → lib/format.mjs
 function visible() {
   return hideDone ? sessions.filter((s) => s.effective !== 'done') : sessions;
 }
@@ -515,26 +502,7 @@ function connect() {
 }
 
 // ---------- 토큰 사용량 위젯 (statusline 덤프 → 토큰 0) ----------
-function resetLabel(epochSec) {
-  if (!epochSec) return '';
-  const ms = epochSec * 1000 - Date.now();
-  if (ms <= 0) return '곧 재설정';
-  const h = Math.floor(ms / 3600e3), m = Math.floor((ms % 3600e3) / 60e3);
-  const when = new Date(epochSec * 1000).toLocaleString('ko-KR',
-    { weekday: 'short', hour: '2-digit', minute: '2-digit' });
-  return h >= 1 ? `${h}시간 ${m}분 후 재설정 · ${when}` : `${m}분 후 재설정 · ${when}`;
-}
-function usageColor(p) { return p >= 85 ? '#EF4444' : p >= 60 ? '#F59E0B' : '#22C55E'; }
-// 스냅샷 신선도: office-usage.json 은 statusline 렌더 시점에만 갱신됨(라이브 아님)
-function freshnessLabel(tsMs) {
-  if (!tsMs) return '';
-  const age = Date.now() - tsMs;
-  if (age < 90e3) return '방금 기준';
-  const m = Math.round(age / 60e3);
-  if (m < 60) return `${m}분 전 기준`;
-  const h = Math.floor(m / 60);
-  return `${h}시간 ${m % 60}분 전 기준`;
-}
+// resetLabel() · usageColor() · freshnessLabel() → lib/format.mjs
 function renderUsage(u) {
   const box = document.getElementById('usage');
   if (!u || (u.fiveHourPct == null && u.weeklyPct == null)) { box.style.display = 'none'; return; }
@@ -1930,35 +1898,7 @@ function podVariantB(p, seats) {
   return ((h >>> 8) % 3 === 2) && seats.filter(Boolean).length === 4;
 }
 
-// pod별 인원수(1~4 다양) — 시드 고정으로 안정, 합 = n
-function seatAssignment(n, pods) {
-  const counts = new Array(pods).fill(0);
-  if (n <= 0) return counts;
-  let seed = (Math.imul(n, 2654435761) + Math.imul(pods, 40503)) >>> 0;
-  const rnd = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
-  const choices = [1, 2, 2, 3, 3, 4];           // 2·3명 비중↑
-  let remaining = n;
-  for (let i = 0; i < pods && remaining > 0; i++) {
-    const c = Math.min(choices[Math.floor(rnd() * choices.length)], remaining);
-    counts[i] = c; remaining -= c;
-  }
-  let i = 0, guard = 0;
-  while (remaining > 0 && guard++ < n + pods) {
-    if (counts[i] < 4) { counts[i]++; remaining--; }
-    i = (i + 1) % pods;
-  }
-  return counts;
-}
-function seatOrder(p) {                          // pod 내 좌석 슬롯 채우는 순서(다양화)
-  const base = [0, 1, 2, 3];
-  let seed = hash('seat' + p);
-  for (let i = 3; i > 0; i--) {
-    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-    const j = seed % (i + 1);
-    [base[i], base[j]] = [base[j], base[i]];
-  }
-  return base;
-}
+// seatAssignment() · seatOrder() → lib/seating.mjs
 function buildSeatMap(vis, pods) {
   const counts = seatAssignment(vis.length, pods);
   const map = [];
@@ -3034,31 +2974,7 @@ function setBadge(ov, eff) {
   b.className = 'sess-badge ' + eff;
   b.textContent = (m.emoji ? m.emoji + ' ' : '') + m.label;
 }
-function fmtTime(ts) {                         // ISO → "15:42"
-  if (!ts) return '';
-  try { return new Date(ts).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }); } catch (e) { return ''; }
-}
-function toolShortName(name) {                 // mcp__chrome-devtools__take_screenshot → take_screenshot
-  if (typeof name !== 'string') return 'tool';
-  if (name.startsWith('mcp__')) { const p = name.split('__'); return p[p.length - 1] || name; }
-  return name;
-}
-function fmtTokens(n) {                        // 1228318 → "1.2M"
-  if (n == null || isNaN(n)) return null;
-  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
-  if (n >= 1e3) return Math.round(n / 1e3) + 'K';
-  return String(n);
-}
-function fmtElapsed(createdAt) {               // 생성 후 경과 → "2시간"/"15분"/"3일"
-  if (!createdAt) return null;
-  const ms = Date.now() - new Date(createdAt).getTime();
-  if (isNaN(ms) || ms < 0) return null;
-  const m = Math.floor(ms / 60000);
-  if (m < 60) return m + '분';
-  const h = Math.floor(m / 60);
-  if (h < 24) return h + '시간';
-  return Math.floor(h / 24) + '일';
-}
+// fmtTime() · toolShortName() · fmtTokens() · fmtElapsed() → lib/format.mjs
 function renderMeta(d) {                        // 지표 칩 + 목표 + 지금 실행 + 산출물 링크
   const meta = document.getElementById('session').querySelector('.sess-meta');
   meta.innerHTML = '';
@@ -3090,12 +3006,7 @@ function renderMeta(d) {                        // 지표 칩 + 목표 + 지금 
   }
 }
 // 변화 감지용 시그니처(상태·현재작업·메시지 수·마지막 메시지 꼬리)
-function sessionSig(d) {
-  const last = d.messages && d.messages.length ? d.messages[d.messages.length - 1].text : '';
-  const fanSig = (d.fan || []).map((f) => f.label).join(',');
-  return (d.state || '') + '|' + (d.detail || '') + '|' + (d.messages ? d.messages.length : 0) + '|' +
-    (d.tokens || 0) + '|' + ((d.inFlight && d.inFlight.tasks) || 0) + '|' + ((d.children || []).length) + '|' + fanSig + '|' + last.slice(-48);
-}
+// sessionSig() → lib/sig.mjs
 async function loadSession(s, initial) {
   const ov = document.getElementById('session');
   try {

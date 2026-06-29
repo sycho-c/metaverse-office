@@ -1,0 +1,11 @@
+{
+  "name": "metaverse-office",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Claude Code 백그라운드 세션을 픽셀 오피스로 시각화하는 읽기 전용 모니터 (의존성 0)",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.mjs"
+  }
+}
