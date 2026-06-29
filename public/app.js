@@ -8,9 +8,12 @@ import { seatAssignment, seatOrder } from './lib/seating.mjs';
 import { sessionSig } from './lib/sig.mjs';
 import { rel, resetLabel, usageColor, freshnessLabel, fmtTime, toolShortName, fmtTokens, fmtElapsed } from './lib/format.mjs';
 
+// ---------- 공유 렌더 컨텍스트 (core/gfx.mjs) ----------
+// canvas/ctx/C/TH/S/lastT/dtFrame 는 gfx 가 소유하는 live binding. 재할당은 setter 경유.
+import { canvas, ctx, S, C, TH, lastT, dtFrame, setScale, setTiming, applyPalette } from './core/gfx.mjs';
+
 // ---------- 레이아웃 상수 ----------
 const DISP = 2;                    // 화면 표시 배율 (CSS px per 논리 px)
-let S = 2;                         // 백킹 렌더 배율 = DISP × devicePixelRatio (프레임마다 갱신, 고DPI 선명도)
 const POD_W = 92;
 const POD_H = 106;
 const AISLE_X = 44;
@@ -23,8 +26,7 @@ const CORRIDOR_H = 26;
 // ===== 테마 레지스트리 → themes.mjs =====
 import { THEMES, resolveTheme } from './themes.mjs';
 let activeTheme = resolveTheme();
-let TH = THEMES[activeTheme];          // 활성 테마(존 바닥·러그·배경 참조용)
-let C = TH.C;                          // 월드 팔레트(테마 전환 시 재할당 — frame()이 매 프레임 참조)
+applyPalette(THEMES[activeTheme]);     // gfx 의 TH/C 초기화(이후 import 한 TH/C 가 최신값 반영)
 // 페이지 크롬(헤더·사이드바·캔버스 외부) CSS 변수 적용 — 상태 의미색은 건드리지 않음
 function applyChrome(th) {
   const r = document.documentElement.style, c = th.chrome;
@@ -36,8 +38,8 @@ function applyChrome(th) {
 // 테마 전환 — 리로드 없이 즉시 반영(frame()이 매 프레임 C/TH 참조)
 function setTheme(name) {
   if (!THEMES[name]) return false;
-  activeTheme = name; TH = THEMES[name]; C = TH.C; ZONE_RUG = TH.zoneRug;
-  applyChrome(TH);
+  activeTheme = name; applyPalette(THEMES[name]); ZONE_RUG = THEMES[name].zoneRug;
+  applyChrome(THEMES[name]);
   const sel = document.getElementById('theme-select');
   if (sel && sel.value !== name) sel.value = name;   // 드롭다운 표시 동기화(프로그램/단축키 전환 대비)
   try { localStorage.setItem('office.theme', name); } catch (e) { /* */ }
@@ -87,7 +89,7 @@ let zoneLabels = [];
 let obstacles = [];                // 통과 불가 영역 (논리 AABB)
 let floorW = 0, floorH = 0;        // 현재 바닥 논리 크기
 const walkers = new Map();         // sessionId → 보행 상태
-let lastT = 0, dtFrame = 16;       // 프레임 간격(ms)
+// lastT/dtFrame → core/gfx.mjs (setTiming 으로 갱신)
 let maxWalkers = 2;                // 동시 보행 인원 상한
 const ROAM_TOP = TOP_WALL + ZONE_H + 2;   // 코어 보행 영역 상단(복도)
 const WALK_SPEED = 0.05;           // 논리px/ms
@@ -108,8 +110,7 @@ const SAY = {
   stalled: ['음…', '어? 멈췄나', 'zzz', '응답이 없네', '뭔가 이상한데'],
 };
 
-const canvas = document.getElementById('office');
-const ctx = canvas.getContext('2d');
+// canvas/ctx → core/gfx.mjs (import)
 const listEl = document.getElementById('list');
 let searchQuery = '';                          // 세션 검색어
 let statusFilter = 'all';                       // 상태 필터(all/working/blocked/stalled/done)
@@ -2283,10 +2284,9 @@ function drawCat(t) {
 
 // ---------- 메인 루프 ----------
 function frame(t) {
-  dtFrame = lastT ? Math.min(60, t - lastT) : 16;
-  lastT = t;
+  setTiming(t, lastT ? Math.min(60, t - lastT) : 16);
   // 고DPI 선명도: 백킹은 devicePixelRatio만큼 더 높게 렌더, 표시 크기는 DISP로 고정
-  S = DISP * Math.min(window.devicePixelRatio || 1, 3);
+  setScale(DISP * Math.min(window.devicePixelRatio || 1, 3));
   const vis = visible();
   const layout = computeLayout(vis.length);
   floorW = layout.W; floorH = layout.H;
