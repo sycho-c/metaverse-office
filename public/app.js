@@ -4,7 +4,7 @@
 
 // ---------- 순수 로직 모듈 (테스트 대상, public/lib/*.mjs) ----------
 import { hash } from './lib/hash.mjs';
-import { seatAssignment, seatOrder } from './lib/seating.mjs';
+import { buildSeatMap, podVariantB } from './lib/seating.mjs';
 import { sessionSig } from './lib/sig.mjs';
 import { lookOf } from './lib/look.mjs';
 import { rel, resetLabel, usageColor, freshnessLabel, fmtTime, toolShortName, fmtTokens, fmtElapsed } from './lib/format.mjs';
@@ -439,27 +439,7 @@ function drawTags(t) {
 }
 
 // ---------- 충돌 / 보행 시스템 ----------
-function podVariantB(p, seats) {
-  const h = hash('pod' + p);
-  return ((h >>> 8) % 3 === 2) && seats.filter(Boolean).length === 4;
-}
-
-// seatAssignment() · seatOrder() → lib/seating.mjs
-function buildSeatMap(vis, pods) {
-  const counts = seatAssignment(vis.length, pods);
-  const map = [];
-  let idx = 0;
-  for (let p = 0; p < pods; p++) {
-    const slots = [undefined, undefined, undefined, undefined];
-    const order = seatOrder(p);
-    for (let j = 0; j < counts[p] && idx < vis.length; j++) slots[order[j]] = vis[idx++];
-    map.push(slots);
-  }
-  for (let p = 0; p < pods && idx < vis.length; p++) {   // 안전: 남은 세션 채움
-    for (let j = 0; j < 4 && idx < vis.length; j++) if (!map[p][j]) map[p][j] = vis[idx++];
-  }
-  return map;
-}
+// podVariantB() · buildSeatMap() (+ seatAssignment·seatOrder) → lib/seating.mjs
 
 // 통과 불가 영역 수집: 책상 + 빈슬롯 가구 + 방 벽(문 제외)·방 가구
 function collectObstacles(layout) {

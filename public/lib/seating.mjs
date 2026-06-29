@@ -31,3 +31,26 @@ export function seatOrder(p) {                          // pod 내 좌석 슬롯
   }
   return base;
 }
+
+// pod 변형 B(좌우 책상 마주보기) 여부 — 4인 만석 + 시드. 좌석 배치/충돌/그리기 공통.
+export function podVariantB(p, seats) {
+  const h = hash('pod' + p);
+  return ((h >>> 8) % 3 === 2) && seats.filter(Boolean).length === 4;
+}
+
+// 가시 세션을 pod별 좌석 배열[pods][4]에 배정(시드 고정). 빈칸은 undefined.
+export function buildSeatMap(vis, pods) {
+  const counts = seatAssignment(vis.length, pods);
+  const map = [];
+  let idx = 0;
+  for (let p = 0; p < pods; p++) {
+    const slots = [undefined, undefined, undefined, undefined];
+    const order = seatOrder(p);
+    for (let j = 0; j < counts[p] && idx < vis.length; j++) slots[order[j]] = vis[idx++];
+    map.push(slots);
+  }
+  for (let p = 0; p < pods && idx < vis.length; p++) {   // 안전: 남은 세션 채움
+    for (let j = 0; j < 4 && idx < vis.length; j++) if (!map[p][j]) map[p][j] = vis[idx++];
+  }
+  return map;
+}

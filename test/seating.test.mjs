@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { seatAssignment, seatOrder } from '../public/lib/seating.mjs';
+import { seatAssignment, seatOrder, buildSeatMap, podVariantB } from '../public/lib/seating.mjs';
 
 test('seatAssignment: 인원 0 → 전부 0', () => {
   assert.deepEqual(seatAssignment(0, 4), [0, 0, 0, 0]);
@@ -32,4 +32,29 @@ test('seatOrder: [0,1,2,3]의 순열', () => {
 
 test('seatOrder: 결정적', () => {
   assert.deepEqual(seatOrder(2), seatOrder(2));
+});
+
+test('buildSeatMap: pods×4 형태 + 가시 세션 전원 배정', () => {
+  const vis = Array.from({ length: 7 }, (_, i) => ({ id: 's' + i }));
+  const map = buildSeatMap(vis, 3);
+  assert.equal(map.length, 3);
+  for (const slots of map) assert.equal(slots.length, 4);
+  const placed = map.flat().filter(Boolean);
+  assert.equal(placed.length, 7);                       // 전원 배정
+  assert.equal(new Set(placed.map((s) => s.id)).size, 7); // 중복 없음
+});
+
+test('buildSeatMap: 결정적', () => {
+  const vis = Array.from({ length: 5 }, (_, i) => ({ id: 'x' + i }));
+  assert.deepEqual(buildSeatMap(vis, 2), buildSeatMap(vis, 2));
+});
+
+test('podVariantB: 4인 만석 아니면 항상 false', () => {
+  assert.equal(podVariantB(0, [{}, {}, undefined, undefined]), false);
+  assert.equal(podVariantB(1, []), false);
+});
+
+test('podVariantB: 결정적', () => {
+  const seats = [{}, {}, {}, {}];
+  assert.equal(podVariantB(3, seats), podVariantB(3, seats));
 });
