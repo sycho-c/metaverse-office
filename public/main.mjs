@@ -1,6 +1,6 @@
-/* Claude Office — Canvas 픽셀 오피스 렌더러
- * 애플 스타일 오피스: 화이트+라이트 오크+알루미늄, iMac 데스크, 자유 배치 클러스터 */
-'use strict';
+/* Claude Office — 엔트리 오케스트레이터 (Canvas 픽셀 오피스)
+ * frame 루프 + 레이아웃 + 플로어/포드 렌더 + 이름표 + 테마 + 부트.
+ * 월드 시뮬→world.mjs · 플레이어→player.mjs · UI 패널→ui/panel.mjs · 공유 상태→core/*-state.mjs */
 
 // ---------- 순수 로직 모듈 (테스트 대상, public/lib/*.mjs) ----------
 import { hash } from './lib/hash.mjs';
