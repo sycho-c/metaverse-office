@@ -100,22 +100,6 @@ export function drawBookshelf(x, y) {
 }
 
 // ---------- 탕비실 가전 (스테인리스/화이트) ----------
-function drawFridge(x, y) {
-  shadow(x + 6, y + 24, 14, 3);
-  ctx.fillStyle = C.outline;
-  ctx.fillRect(x - 1, y - 1, 14, 25);
-  ctx.fillStyle = C.alu;
-  ctx.fillRect(x, y, 12, 23);
-  ctx.fillStyle = C.aluHi;
-  ctx.fillRect(x, y, 3, 23);
-  ctx.fillStyle = C.aluDark;
-  ctx.fillRect(x, y + 9, 12, 1);
-  ctx.fillRect(x, y + 21, 12, 2);
-  ctx.fillStyle = '#6b7078';
-  ctx.fillRect(x + 9, y + 2, 1, 5);
-  ctx.fillRect(x + 9, y + 12, 1, 6);
-}
-
 function drawVending(x, y, t) {
   shadow(x + 8, y + 26, 18, 3);
   ctx.fillStyle = C.outline;
@@ -141,40 +125,6 @@ function drawVending(x, y, t) {
   ctx.fillRect(x + 11, y + 7, 3, 5);
   ctx.fillStyle = '#15171c';
   ctx.fillRect(x + 3, y + 18, 9, 4);
-}
-
-function drawCounter(x, y, w, t) {
-  shadow(x + w / 2, y + 16, w, 4);
-  ctx.fillStyle = C.outline;
-  ctx.fillRect(x - 1, y - 1, w + 2, 15);
-  ctx.fillStyle = C.white;
-  ctx.fillRect(x, y, w, 9);
-  ctx.fillStyle = C.oak;                          // 오크 하부장
-  ctx.fillRect(x, y + 9, w, 5);
-  ctx.fillStyle = C.oakGrain;
-  ctx.fillRect(x, y + 9, w, 1);
-  ctx.fillStyle = C.alu;                          // 싱크
-  ctx.fillRect(x + 6, y + 2, 10, 5);
-  ctx.fillStyle = C.aluDark;
-  ctx.fillRect(x + 7, y + 3, 8, 3);
-  ctx.fillStyle = '#6b7078';
-  ctx.fillRect(x + 10, y, 1, 2);
-  const cm = x + w - 16;                          // 커피머신 (실버)
-  ctx.fillStyle = C.aluDark;
-  ctx.fillRect(cm, y - 6, 11, 13);
-  ctx.fillStyle = C.alu;
-  ctx.fillRect(cm + 1, y - 5, 9, 11);
-  ctx.fillStyle = '#2a2d33';
-  ctx.fillRect(cm + 3, y - 1, 5, 5);
-  ctx.fillStyle = Math.floor(t / 500) % 2 ? '#30c158' : '#1f8a40';
-  ctx.fillRect(cm + 8, y - 4, 2, 2);
-  const mw = x + w / 2 + 2;                       // 전자레인지
-  ctx.fillStyle = C.alu;
-  ctx.fillRect(mw, y - 4, 13, 8);
-  ctx.fillStyle = '#22252b';
-  ctx.fillRect(mw + 1, y - 3, 8, 6);
-  ctx.fillStyle = '#30c158';
-  ctx.fillRect(mw + 10, y - 2, 2, 1);
 }
 
 function drawSnackShelf(x, y) {

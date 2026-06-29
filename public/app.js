@@ -601,10 +601,6 @@ function ensureWalker(s, hx, hy, facing) {
   w.hx = hx; w.hy = hy;
   return w;
 }
-function walkerSeated(s) {
-  const w = walkers.get(s.id);
-  return !w || w.mode === 'sit';
-}
 function activeWalkerCount() {
   let n = 0;
   for (const w of walkers.values()) if (w.mode !== 'sit') n++;
