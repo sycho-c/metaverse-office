@@ -15,3 +15,6 @@ export let settingsOpen = false;      // 설정 패널 열림 → 플레이어 �
 export function setSettingsOpen(v) { settingsOpen = v; }
 
 export const keys = { up: false, down: false, left: false, right: false, sprint: false };
+
+export let sessions = [];             // 서버 SSE 로 받은 세션 목록 (ui 패널 + 메인 캔버스 공유)
+export function setSessions(v) { sessions = v; }
