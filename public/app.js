@@ -6,6 +6,7 @@
 import { hash } from './lib/hash.mjs';
 import { seatAssignment, seatOrder } from './lib/seating.mjs';
 import { sessionSig } from './lib/sig.mjs';
+import { lookOf } from './lib/look.mjs';
 import { rel, resetLabel, usageColor, freshnessLabel, fmtTime, toolShortName, fmtTokens, fmtElapsed } from './lib/format.mjs';
 
 // ---------- 공유 렌더 컨텍스트 (core/gfx.mjs) ----------
@@ -16,7 +17,7 @@ import { shadow, drawPlant, roundRect, roundRectStroke } from './render/primitiv
 // ---------- 불변 상수 → constants.mjs ----------
 import {
   DISP, POD_W, POD_H, AISLE_X, AISLE_Y, WALL, TOP_WALL, ZONE_H, CORRIDOR_H, ROAM_TOP, WALK_SPEED,
-  SCREEN, STATE_META, TAG_COLOR, STATE_GLYPH, SKINS, HAIRS, HAIRHI, SHIRTS, SAY,
+  STATE_META, TAG_COLOR, STATE_GLYPH, SAY,
 } from './constants.mjs';
 
 // ===== 테마 레지스트리 → themes.mjs =====
@@ -89,22 +90,7 @@ const connEl = document.getElementById('conn');
 
 // ---------- 유틸 ----------
 // hash() → lib/hash.mjs
-function lookOf(id) {
-  const h = hash(id);
-  const hi = (h >>> 3) % HAIRS.length;
-  return {
-    skin: SKINS[h % SKINS.length],
-    hair: HAIRS[hi], hairHi: HAIRHI[hi],
-    shirt: SHIRTS[(h >>> 7) % SHIRTS.length],
-    deskKind: (h >>> 16) % 3,
-    hairStyle: (h >>> 21) % 4,       // 0 숏컷 1 사이드 2 롱헤어 3 똥머리
-    glasses: (h >>> 23) % 3 === 0,
-    headphone: (h >>> 25) % 4 === 0,
-    collar: (h >>> 27) % 2 === 0,
-    phase: (h % 100) / 100 * Math.PI * 2,
-  };
-}
-// rel() → lib/format.mjs
+// lookOf() → lib/look.mjs · rel() → lib/format.mjs
 function visible() {
   return hideDone ? sessions.filter((s) => s.effective !== 'done') : sessions;
 }
