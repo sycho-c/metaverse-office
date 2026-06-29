@@ -50,20 +50,26 @@ node server.js
 
 ## 코드 구조 (프론트엔드 ESM 모듈)
 
-`public/app.js`(classic script, 단일 거대 파일)를 책임별 ES 모듈로 분리 중이다.
+`public/main.mjs`(엔트리)를 정점으로 책임별 ES 모듈로 분리됐다(3369줄 단일 파일 → 13개 모듈).
 브라우저 네이티브 ESM(`<script type="module">`)이라 번들러 없이 의존성 0 유지.
+공유 가변 상태는 **leaf 허브 모듈**이 소유(live binding + setter)해 순환 의존 없이 공유.
 
 | 모듈 | 책임 |
 |---|---|
-| `lib/{hash,color,seating,sig,format}.mjs` | 순수 로직(외형 해시·색 연산·좌석 배정·시그니처·포매터). `node --test` 대상 |
+| `lib/{hash,color,seating,sig,format,look}.mjs` | 순수 로직(외형 해시·색 연산·좌석 배정·시그니처·포매터·외형). `node --test` 대상 |
 | `core/gfx.mjs` | 공유 렌더 컨텍스트(canvas·2D ctx·팔레트 C/TH·스케일 S·타이밍). live binding + setter |
+| `core/world-state.mjs` | 월드+이름표 공유 상태(floor·rooms·seatMap·walkers·speeches·tagJobs·tagPlaced·cellRects·pushTag) |
+| `core/app-state.mjs` | UI/플레이어 공유 플래그(sessions·highlightId·talking·talkTarget·settingsOpen·keys) |
 | `constants.mjs` | 불변 데이터(레이아웃·상태 의미색·캐릭터 팔레트·대사) |
 | `themes.mjs` | 테마 레지스트리 12종 + 활성 테마 해석 |
 | `render/primitives.mjs` | 그리기 leaf 헬퍼(roundRect·shadow·drawPlant) |
 | `render/furniture.mjs` | 가구·가전·테마 오브젝트·시그니처 데코·히어로 그리기(50여 함수) |
 | `render/characters.mjs` | iMac 모니터·데스크·캐릭터(머리/몸) 그리기 |
+| `world.mjs` | 월드 시뮬레이션 — 충돌·BFS 경로탐색·보행·앰비언트 NPC·대사·고양이 + `rebuildWorld` |
+| `player.mjs` | 키보드 플레이어 아바타(이동·근접 탐색·렌더·속도 설정) |
+| `ui/panel.mjs` | 세션 패널·사용량 위젯·토스트·알림·세션 내용 패널·설정·SSE(순수 DOM) |
 | `claude-status.mjs` | status.claude.com 폴링 위젯(자족 side-effect) |
-| `app.js` | (분리 진행 중) 월드 시뮬·이름표·플로어/포드 렌더·세션 패널·플레이어·SSE·frame 루프 |
+| `main.mjs` | 엔트리 오케스트레이터 — frame 루프 + 레이아웃 + 플로어/포드 렌더 + 이름표 + 테마 + 부트 |
 
 **테스트**: `npm test` (= `node --test test/*.test.mjs`, 의존성 0). 순수 로직 회귀 안전망.
 
