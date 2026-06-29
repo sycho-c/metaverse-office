@@ -60,8 +60,10 @@ node server.js
 | `constants.mjs` | 불변 데이터(레이아웃·상태 의미색·캐릭터 팔레트·대사) |
 | `themes.mjs` | 테마 레지스트리 12종 + 활성 테마 해석 |
 | `render/primitives.mjs` | 그리기 leaf 헬퍼(roundRect·shadow·drawPlant) |
+| `render/furniture.mjs` | 가구·가전·테마 오브젝트·시그니처 데코·히어로 그리기(50여 함수) |
+| `render/characters.mjs` | iMac 모니터·데스크·캐릭터(머리/몸) 그리기 |
 | `claude-status.mjs` | status.claude.com 폴링 위젯(자족 side-effect) |
-| `app.js` | (분리 진행 중) 월드 시뮬·렌더 오케스트레이션·세션 패널·플레이어·SSE |
+| `app.js` | (분리 진행 중) 월드 시뮬·이름표·플로어/포드 렌더·세션 패널·플레이어·SSE·frame 루프 |
 
 **테스트**: `npm test` (= `node --test test/*.test.mjs`, 의존성 0). 순수 로직 회귀 안전망.
 
