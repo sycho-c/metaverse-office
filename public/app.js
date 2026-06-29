@@ -14,6 +14,17 @@ import { rel, resetLabel, usageColor, freshnessLabel, fmtTime, toolShortName, fm
 import { canvas, ctx, S, C, TH, lastT, dtFrame, setScale, setTiming, applyPalette } from './core/gfx.mjs';
 import { shadow, drawPlant, roundRect, roundRectStroke } from './render/primitives.mjs';
 
+// ---------- 공유 가변 상태 허브 (core/world-state.mjs · core/app-state.mjs) ----------
+import {
+  floorW, floorH, setFloor, rooms, setRooms, seatMap, setSeatMap,
+  walkers, speeches, speechOn, setSpeechOn,
+  tagJobs, tagPlaced, cellRects, pushTag,
+} from './core/world-state.mjs';
+import {
+  highlightId, setHighlightId, talking, setTalking, talkTarget, setTalkTarget,
+  settingsOpen, setSettingsOpen, keys,
+} from './core/app-state.mjs';
+
 // ---------- 불변 상수 → constants.mjs ----------
 import {
   DISP, POD_W, POD_H, AISLE_X, AISLE_Y, WALL, TOP_WALL, ZONE_H, CORRIDOR_H, ROAM_TOP, WALK_SPEED,
@@ -47,26 +58,18 @@ window.officeTheme = { list: () => Object.keys(THEMES).map((k) => ({ key: k, lab
 // SCREEN·STATE_META·TAG_COLOR·STATE_GLYPH·SKINS·HAIRS·HAIRHI·SHIRTS → constants.mjs
 
 // ---------- 상태 ----------
+// highlightId → app-state · floorW/floorH/rooms/seatMap/walkers/speeches/cellRects/tagJobs/tagPlaced → world-state
 let sessions = [];
 let prevEffective = new Map();
-let highlightId = null;
 let hideDone = false;
-let cellRects = [];
-let tagJobs = [];
 let zoneLabels = [];
 
-// 충돌/보행
+// 충돌/보행 (obstacles/maxWalkers/speechCooldown 은 Step C 에서 world.mjs 로 이동 예정)
 let obstacles = [];                // 통과 불가 영역 (논리 AABB)
-let floorW = 0, floorH = 0;        // 현재 바닥 논리 크기
-const walkers = new Map();         // sessionId → 보행 상태
 // lastT/dtFrame → core/gfx.mjs (setTiming 으로 갱신)
 let maxWalkers = 2;                // 동시 보행 인원 상한
 // ROAM_TOP/WALK_SPEED → constants.mjs
-let rooms = [];                    // 휴게실/탕비실 기하 {type,x,y,w,h} (개방형, 아래 열림)
-let seatMap = [];                  // pod별 좌석 배정 [pods][4] (세션 or undefined)
-const speeches = new Map();        // sessionId → { text, until }
 let speechCooldown = 1500;
-let tagPlaced = new Map();         // sessionId → 최종 이름표 위치 {cx,y} (말풍선 배치용)
 
 // 상황별 랜덤 대사 SAY → constants.mjs
 
@@ -214,10 +217,10 @@ function renderPanel() {
     if (respText) { rp.textContent = respText; rp.title = respText; }
     else rp.style.display = 'none';
     li.title = s.lastPrompt ? `내 요청: ${s.lastPrompt}\n\nAI 응답: ${respText}` : respText;
-    li.onclick = () => { highlightId = s.id === highlightId ? null : s.id; renderPanel(); };
-    li.ondblclick = () => { highlightId = s.id; openTalk(s); };           // 더블클릭: 내용 패널 열기
+    li.onclick = () => { setHighlightId(s.id === highlightId ? null : s.id); renderPanel(); };
+    li.ondblclick = () => { setHighlightId(s.id); openTalk(s); };           // 더블클릭: 내용 패널 열기
     const vb = li.querySelector('.view-btn');
-    if (vb) vb.onclick = (e) => { e.stopPropagation(); highlightId = s.id; openTalk(s); };   // 버튼: 내용 패널(하이라이트 토글 안 함)
+    if (vb) vb.onclick = (e) => { e.stopPropagation(); setHighlightId(s.id); openTalk(s); };   // 버튼: 내용 패널(하이라이트 토글 안 함)
     listEl.appendChild(li);
   }
 }
@@ -233,7 +236,7 @@ function cellAt(ev) {
 }
 canvas.addEventListener('click', (ev) => {
   const s = cellAt(ev);
-  highlightId = s && s.id !== highlightId ? s.id : null;
+  setHighlightId(s && s.id !== highlightId ? s.id : null);
   renderPanel();
 });
 canvas.addEventListener('mousemove', (ev) => {
@@ -344,14 +347,12 @@ import {
 } from './render/characters.mjs';
 
 // ---------- 이름표 (가독성: 큰 폰트 + 보더 + 그림자) ----------
-function pushTag(s, cxLogical, yLogical, look) {
-  tagJobs.push({ s, scx: cxLogical * S, sy: yLogical * S, look });
-}
+// pushTag() → core/world-state.mjs
 function drawTags(t) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);            // 백킹 픽셀 공간 — 고정 크기는 k(=dpr)로 스케일
   const k = S / DISP;
   const fontTag = `600 ${12 * k}px -apple-system, "Apple SD Gothic Neo", sans-serif`;
-  tagPlaced = new Map();
+  tagPlaced.clear();
 
   // 1) 측정
   const items = [];
@@ -1126,18 +1127,18 @@ function frame(t) {
   setScale(DISP * Math.min(window.devicePixelRatio || 1, 3));
   const vis = visible();
   const layout = computeLayout(vis.length);
-  floorW = layout.W; floorH = layout.H;
+  setFloor(layout.W, layout.H);
   // 존 기하 — 상단을 4개 존(AI Lab / Collaboration / Cafe·Break / Focus Booth)이 밀착해 차지
   const innerW = layout.W - WALL * 2;
   const zAi = Math.round(innerW * 0.28), zCo = Math.round(innerW * 0.22), zCa = Math.round(innerW * 0.28);
   const zx = WALL;
-  rooms = [
+  setRooms([
     { type: 'ailab',  label: 'AI Lab',        floor: TH.zoneFloors.ailab,  x: zx,                 y: TOP_WALL, w: zAi, h: ZONE_H },
     { type: 'collab', label: 'Collaboration', floor: TH.zoneFloors.collab, x: zx + zAi,           y: TOP_WALL, w: zCo, h: ZONE_H },
     { type: 'cafe',   label: 'Cafe · Break',  floor: TH.zoneFloors.cafe,   x: zx + zAi + zCo,     y: TOP_WALL, w: zCa, h: ZONE_H },
     { type: 'focus',  label: 'Focus Booth',   floor: TH.zoneFloors.focus,  x: zx + zAi + zCo + zCa, y: TOP_WALL, w: layout.W - WALL - (zx + zAi + zCo + zCa), h: ZONE_H },
-  ];
-  seatMap = buildSeatMap(vis, layout.pods);   // 1~4명 다양한 좌석 배정
+  ]);
+  setSeatMap(buildSeatMap(vis, layout.pods));   // 1~4명 다양한 좌석 배정
   collectObstacles(layout);
   buildGrid();                                // 경로탐색 격자(레이아웃 변경 시 갱신)
   const w = layout.W * S, h = layout.H * S;
@@ -1176,8 +1177,8 @@ function frame(t) {
   drawQAZone(midX, by, layout.W - WALL - midX, bh, t);
   zoneLabels.push({ text: 'QA Zone', x: midX + 8, y: by + bh - 6 });
 
-  cellRects = [];
-  tagJobs = [];
+  cellRects.length = 0;
+  tagJobs.length = 0;
 
   // ── 바닥(러그) 패스 — 데코·가구보다 먼저 깔아 오브젝트가 러그에 묻히지 않게 함 ──
   // pod 러그 + 빈슬롯 러그를 모두 최하단에 둔다(좌우 페리미터/복도 데코를 덮던 버그 제거)
@@ -1249,10 +1250,7 @@ function frame(t) {
 
 // ---------- 플레이어 아바타 (방향키 조작 + 세션에게 말 걸기) ----------
 const player = { x: 0, y: 0, facing: 'down', spawned: false, near: null };
-const keys = { up: false, down: false, left: false, right: false, sprint: false };
-let talking = false;                 // 채팅 입력 중 → 이동 정지
-let talkTarget = null;
-let settingsOpen = false;            // 설정 패널 열림 → 이동 정지
+// keys/talking/talkTarget/settingsOpen → core/app-state.mjs
 const PLAYER_LOOK = { skin: '#ffdbac', hair: '#1f1f24', hairHi: '#3a3a42', shirt: '#e84a8a', deskKind: 0, hairStyle: 3, glasses: false, headphone: false, collar: true, phase: 0 };
 const PLAYER_SPEED = 0.08;           // 기준 논리px/ms (속도 설정 배수가 곱해짐)
 // 이동 속도 프리셋 — 설정에서 선택, localStorage('office.speed') 영속. Shift=일시 질주(×1.6)
@@ -1309,10 +1307,9 @@ function setRefresh(key) {
   applyPanelTimer();
 }
 
-// 대사 말풍선 표시 — localStorage('office.speech') 영속(기본 켜기)
-let speechOn = (() => { try { return localStorage.getItem('office.speech') !== 'off'; } catch (e) { return true; } })();
+// 대사 말풍선 표시 — speechOn 상태는 world-state, localStorage('office.speech') 영속(기본 켜기)
 function setSpeech(on) {
-  speechOn = !!on;
+  setSpeechOn(on);
   try { localStorage.setItem('office.speech', on ? 'on' : 'off'); } catch (e) { /* */ }
   if (!on) speeches.clear();
 }
@@ -1524,7 +1521,7 @@ async function loadSession(s, initial) {
   }
 }
 async function openTalk(s) {                 // (이름 유지) 세션 패널 열기 + 라이브 갱신 시작
-  talkTarget = s; talking = true;
+  setTalkTarget(s); setTalking(true);
   keys.up = keys.down = keys.left = keys.right = keys.sprint = false;
   const ov = document.getElementById('session');
   ov.querySelector('.sess-name').textContent = s.name || '(이름 없음)';
@@ -1592,19 +1589,19 @@ function renderSession(d) {
   sessionData = d;
 }
 function closeTalk() {                        // (이름 유지) 세션 패널 닫기 + 갱신 중지
-  talking = false; talkTarget = null; sessionData = null;
+  setTalking(false); setTalkTarget(null); sessionData = null;
   if (sessionTimer) { clearInterval(sessionTimer); sessionTimer = null; }
   const ov = document.getElementById('session');
   if (ov) ov.style.display = 'none';
 }
 // 설정 패널 — , 키 또는 헤더 ⚙ 버튼으로 토글(Mac 기본 Cmd+,와 충돌 없음). 설정 행은 index.html .set-row 추가.
 function openSettings() {
-  settingsOpen = true;
+  setSettingsOpen(true);
   keys.up = keys.down = keys.left = keys.right = keys.sprint = false;
   const ov = document.getElementById('settings'); if (ov) ov.style.display = 'flex';
 }
 function closeSettings() {
-  settingsOpen = false;
+  setSettingsOpen(false);
   const ov = document.getElementById('settings'); if (ov) ov.style.display = 'none';
 }
 function isTyping(el) { return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT'); }
