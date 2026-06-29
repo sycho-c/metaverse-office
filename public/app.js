@@ -11,6 +11,7 @@ import { rel, resetLabel, usageColor, freshnessLabel, fmtTime, toolShortName, fm
 // ---------- 공유 렌더 컨텍스트 (core/gfx.mjs) ----------
 // canvas/ctx/C/TH/S/lastT/dtFrame 는 gfx 가 소유하는 live binding. 재할당은 setter 경유.
 import { canvas, ctx, S, C, TH, lastT, dtFrame, setScale, setTiming, applyPalette } from './core/gfx.mjs';
+import { shadow, drawPlant, roundRect, roundRectStroke } from './render/primitives.mjs';
 
 // ---------- 불변 상수 → constants.mjs ----------
 import {
@@ -339,38 +340,7 @@ function drawWalls(W, H) {
   ctx.fillRect(0, H - 4, W, 4);
 }
 
-// ---------- 그림자/식물 ----------
-function shadow(cx, cy, w, h) {
-  ctx.fillStyle = C.shadow;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-function drawPlant(x, y, big) {
-  const w = big ? 9 : 7, ph = big ? 6 : 5;
-  shadow(x + w / 2, y + ph + 13, w + 3, 3);
-  ctx.fillStyle = C.potHi;                       // 화이트 라운드 포트
-  ctx.fillRect(x, y + 9, w, ph);
-  ctx.fillStyle = C.pot;
-  ctx.fillRect(x, y + 11, w, ph - 2);
-  ctx.fillStyle = C.potDark;
-  ctx.fillRect(x, y + 9 + ph - 1, w, 1);
-  ctx.fillStyle = C.leafDark;
-  ctx.fillRect(x + w / 2 - 2, y, 4, 10);
-  ctx.fillStyle = C.leaf;
-  ctx.fillRect(x + w / 2 - 4, y + 2, 3, 4);
-  ctx.fillRect(x + w / 2 + 1, y + 1, 3, 5);
-  ctx.fillStyle = C.leafHi;
-  ctx.fillRect(x + w / 2 - 3, y + 2, 1, 2);
-  ctx.fillRect(x + w / 2 + 2, y + 1, 1, 2);
-  if (big) {
-    ctx.fillStyle = C.leaf;
-    ctx.fillRect(x + w / 2 - 1, y - 3, 2, 4);
-    ctx.fillStyle = C.leafHi;
-    ctx.fillRect(x + w / 2 - 1, y - 3, 1, 2);
-  }
-}
+// shadow() · drawPlant() → render/primitives.mjs
 
 // ---------- 가구 (애플 라운지 스타일) ----------
 function drawSofa(x, y, w) {
@@ -2185,25 +2155,7 @@ function drawHighlight() {
   }
 }
 
-function roundRect(x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.fill();
-}
-function roundRectStroke(x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-  ctx.stroke();
-}
+// roundRect() · roundRectStroke() → render/primitives.mjs
 
 // ---------- 사무실 고양이 (충돌 회피) ----------
 const cat = { x: 80, y: ROAM_TOP + 30, tx: 120, ty: ROAM_TOP + 60, flip: false, stuck: 0 };
